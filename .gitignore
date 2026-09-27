@@ -5,3 +5,5 @@ target/
 *.log
 .env
 generated-images/
+src-tauri/target/
+src-tauri/gen/
