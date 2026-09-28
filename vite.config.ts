@@ -9,5 +9,5 @@ export default defineConfig({
   build: { target: "esnext" },
   worker: { format: "es" },
   optimizeDeps: { exclude: ["mupdf", "harfbuzzjs"] },
-  test: { environment: "node", include: ["src/**/*.test.{ts,tsx}"] },
+  test: { environment: "node", include: process.env.LEOPDF_CHECKS ? ["src/**/*.check.ts"] : ["src/**/*.test.{ts,tsx}"] },
 });

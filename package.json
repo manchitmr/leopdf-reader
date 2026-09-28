@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "fixtures": "bash scripts/make-fixtures.sh"
+    "fixtures": "bash scripts/make-fixtures.sh",
+    "check:pdfkit": "LEOPDF_CHECKS=1 vitest run"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans": "^0.4.2",
