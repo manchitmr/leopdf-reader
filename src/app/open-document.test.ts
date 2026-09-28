@@ -17,7 +17,7 @@ function fakeEngine(result: OpenResult = okResult) {
   } satisfies EngineLike;
 }
 
-const source = (path: string, load = async () => new Uint8Array([1])): PdfSource => ({ key: path, name: path.slice(1), path, load });
+const source = (path: string, load: () => Promise<Uint8Array> = async () => new Uint8Array([1])): PdfSource => ({ key: path, name: path.slice(1), path, load });
 const newStore = () => createAppStore({ lang: "en", theme: "system", recent: [] });
 
 test("opens a file, marks it ready and records it as recent", async () => {
