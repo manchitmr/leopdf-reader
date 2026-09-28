@@ -31,7 +31,7 @@ test("finds Sinhala text typed without ZWJ", () => {
 });
 
 test("finds Tamil text", () => {
-  expect(findInPage(preparePage(line("தமிழ் நாடு")), "நாடு")).toHaveLength(1);
+  expect(findInPage(preparePage(line("யாழ்ப்பாணம் கொழும்பு")), "கொழும்பு")).toHaveLength(1);
 });
 
 test("match spanning a line break returns one rect per line", () => {

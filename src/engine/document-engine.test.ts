@@ -51,7 +51,7 @@ test("renderPng returns PNG bytes", () => {
 test("search is Unicode-normalised across Sinhala, Tamil and Latin", () => {
   engine.open("a", fixture);
   expect(engine.search("a", "ශ්රී")).toHaveLength(1);
-  expect(engine.search("a", "தமிழ்")).toHaveLength(1);
+  expect(engine.search("a", "யாழ்ப்பாணம்")).toHaveLength(1);
   expect(engine.search("a", "hello")).toHaveLength(1);
   expect(engine.search("a", "second page")[0].page).toBe(1);
   expect(engine.search("a", "")).toEqual([]);
