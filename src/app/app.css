@@ -117,3 +117,13 @@ button, input, select { font: inherit; color: inherit; }
 .outline-indent { width: 20px; flex: none; }
 .outline-title { flex: 1; text-align: left; padding: 4px; border: none; background: none; border-radius: 4px; cursor: pointer; }
 .outline-title:hover:not(:disabled) { background: var(--accent-soft); }
+
+.search-bar {
+  position: absolute; top: 10px; right: 24px; z-index: 5; display: flex; align-items: center; gap: 4px;
+  padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+}
+.search-bar input { width: 220px; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.search-status { min-width: 70px; font-size: 12px; }
+.page-overlay { position: absolute; inset: 0; pointer-events: none; }
+.hit { position: absolute; background: var(--hit); mix-blend-mode: multiply; }
+.hit.active { background: var(--hit-active); }

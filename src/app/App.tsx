@@ -9,6 +9,7 @@ import { PageView } from "../viewer/PageView";
 import { DocMessage } from "./DocMessage";
 import { LeftPanel } from "./LeftPanel";
 import { openSource, reopenAll } from "./open-document";
+import { SearchBar } from "./SearchBar";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
 import { useShortcuts } from "./useShortcuts";
@@ -36,6 +37,7 @@ export function App() {
   const lang = useApp((s) => s.lang);
   const theme = useApp((s) => s.theme);
   const busy = useApp((s) => s.busy);
+  const searchOpen = useApp((s) => s.searchOpen);
   const [engineNotice, setEngineNotice] = useState(false);
   usePersistedSettings();
 
@@ -87,6 +89,7 @@ export function App() {
             <PageView key={tab.id} tab={tab} />
           </>
         )}
+        {tab?.status === "ready" && searchOpen && <SearchBar key={tab.id} tab={tab} />}
       </main>
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
       {busy && <div className="busy-overlay">{t(busy)}</div>}
