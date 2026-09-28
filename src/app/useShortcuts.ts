@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { activeTab, appStore } from "../state/store";
-import { requestClose } from "./edit-actions";
+import { deleteSelected, redo, requestClose, saveTab, undo } from "./edit-actions";
 import { openFromPicker } from "./Toolbar";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -29,6 +29,9 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
           "1": ready ? () => s.setZoom(tab.id, 1) : undefined,
           "2": ready ? () => s.setFit(tab.id, "width") : undefined,
           c: !inField && tab?.selection ? handlers.onCopy : undefined,
+          z: ready && !inField ? () => void (e.shiftKey ? redo(tab.id) : undo(tab.id)) : undefined,
+          y: ready && !inField ? () => void redo(tab.id) : undefined,
+          s: ready ? () => void saveTab(tab.id, { as: e.shiftKey }) : undefined,
         };
         const action = actions[key];
         if (action) {
@@ -39,6 +42,11 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
       }
 
       if (inField || !ready) return;
+      if ((e.key === "Delete" || e.key === "Backspace") && s.editMode && s.selected) {
+        e.preventDefault();
+        void deleteSelected();
+        return;
+      }
       const step = tab.viewMode === "two" ? 2 : 1;
       const pageKeys: Record<string, number | undefined> = {
         PageDown: tab.currentPage + step,
