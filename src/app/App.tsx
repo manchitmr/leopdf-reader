@@ -14,6 +14,7 @@ import { PasswordDialog } from "./PasswordDialog";
 import { printDocument } from "./print";
 import { SearchBar } from "./SearchBar";
 import { TabBar } from "./TabBar";
+import { TabErrorBoundary } from "./TabErrorBoundary";
 import { Toolbar } from "./Toolbar";
 import { useShortcuts } from "./useShortcuts";
 import { Welcome } from "./Welcome";
@@ -109,15 +110,15 @@ export function App() {
         {tab?.status === "locked" && <PasswordDialog key={tab.id} tab={tab} />}
         {tab?.status === "error" && <DocMessage tone="error">{t(tab.error ?? "errorCorrupt", { name: tab.name })}</DocMessage>}
         {tab?.status === "ready" && (
-          <>
+          <TabErrorBoundary key={tab.id} fallback={<DocMessage tone="error">{t("errorCorrupt", { name: tab.name })}</DocMessage>}>
             <LeftPanel tab={tab} />
             <div className="doc-area">
               {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
-              <PageView key={tab.id} tab={tab} />
+              <PageView tab={tab} />
             </div>
-          </>
+            {searchOpen && <SearchBar tab={tab} />}
+          </TabErrorBoundary>
         )}
-        {tab?.status === "ready" && searchOpen && <SearchBar key={tab.id} tab={tab} />}
       </main>
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
       {copied && <div className="toast">{t("copied")}</div>}

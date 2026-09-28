@@ -86,3 +86,7 @@ test("closed documents are forgotten", () => {
   engine.close("a");
   expect(() => engine.render("a", 0, 1, 0)).toThrow("Unknown document a");
 });
+
+test("a document with no pages is reported as corrupt", () => {
+  expect(engine.open("z", fixture.slice(0, 500))).toEqual({ status: "error", reason: "corrupt" });
+});

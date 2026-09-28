@@ -124,6 +124,7 @@ export class DocumentEngine {
     const { doc, repaired } = this.get(docId);
     try {
       const pageCount = doc.countPages();
+      if (pageCount === 0) return { status: "error", reason: "corrupt" };
       const pages: PageInfo[] = [];
       for (let i = 0; i < pageCount; i++) {
         const page = doc.loadPage(i);
