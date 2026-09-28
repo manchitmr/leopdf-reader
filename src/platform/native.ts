@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { isTauri } from "./sources";
 
@@ -7,4 +8,9 @@ export async function onNativeDrop(handler: (paths: string[]) => void): Promise<
   return getCurrentWebview().onDragDropEvent((event) => {
     if (event.payload.type === "drop") handler(event.payload.paths);
   });
+}
+
+export async function printWindow(): Promise<void> {
+  if (isTauri()) await invoke("print_window");
+  else window.print();
 }

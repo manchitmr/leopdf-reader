@@ -11,6 +11,7 @@ import { DocMessage } from "./DocMessage";
 import { LeftPanel } from "./LeftPanel";
 import { openSource, reopenAll } from "./open-document";
 import { PasswordDialog } from "./PasswordDialog";
+import { printDocument } from "./print";
 import { SearchBar } from "./SearchBar";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
@@ -63,7 +64,10 @@ export function App() {
     [],
   );
 
-  const onPrint = useCallback(() => {}, []);
+  const onPrint = useCallback(() => {
+    const current = activeTab(appStore.getState());
+    if (current?.status === "ready") void printDocument(current);
+  }, []);
   const [copied, setCopied] = useState(false);
   const onCopy = useCallback(() => {
     copySelection()

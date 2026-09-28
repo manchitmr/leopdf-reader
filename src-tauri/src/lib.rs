@@ -13,11 +13,16 @@ fn read_file(path: String) -> Result<Response, String> {
     read_pdf_bytes(&path).map(Response::new)
 }
 
+#[tauri::command]
+fn print_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.print().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![read_file])
+        .invoke_handler(tauri::generate_handler![read_file, print_window])
         .run(tauri::generate_context!())
         .expect("error while running LeoPDF Reader");
 }

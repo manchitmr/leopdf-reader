@@ -138,3 +138,10 @@ button, input, select { font: inherit; color: inherit; }
 .form-error { color: #dc2626; margin: 8px 0 0; }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .form-actions button:not(.primary-button) { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); cursor: pointer; }
+
+@media print {
+  @page { margin: 0; }
+  #root { display: none; }
+  #print-root { display: block; }
+  #print-root img { display: block; width: 100%; break-after: page; }
+}
