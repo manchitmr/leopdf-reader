@@ -37,7 +37,7 @@ Popular PDF tools, including Adobe Acrobat, break Sinhala and Tamil text when yo
 |---|---|
 | macOS | `.dmg` (Apple Silicon + Intel) |
 | Windows | `.exe` and `.msi` |
-| Linux | `.AppImage`, `.deb`, `.rpm` |
+| Linux | Planned after Windows |
 
 Installers will be published on the [Releases](../../releases) page.
 
@@ -71,3 +71,7 @@ npm run tauri build    # build installers for your OS
 Early releases are not code-signed yet.
 - **macOS:** right-click the app → Open → Open.
 - **Windows:** on the SmartScreen warning click "More info" → "Run anyway".
+
+### Test builds
+
+Maintainers can build installers without making a release: GitHub → Actions → **Build installers** → *Run workflow* (Windows, macOS or both). The `.exe`/`.msi`/`.dmg` files appear under the run's *Artifacts*.
