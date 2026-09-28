@@ -1434,7 +1434,12 @@ function docWithImages() {
   return pdf;
 }
 const ctxFor = (pdf: mupdf.PDFDocument): EditContext => ({ pdf, page: pdf.loadPage(0), fonts: new EmbeddedFonts(pdf) });
-const imageCount = (pdf: mupdf.PDFDocument) => listExistingImages(pdf.loadPage(0)).length;
+/** Every image drawn on page 0 (LeoPDF's own and original ones). */
+function imageCount(pdf: mupdf.PDFDocument): number {
+  let n = 0;
+  pdf.loadPage(0).toStructuredText("preserve-images").walk({ onImageBlock: () => void n++ });
+  return n;
+}
 
 test("existing images are listed with page-space rects", () => {
   const rects = listExistingImages(docWithImages().loadPage(0)).map((i) => i.rect.map(Math.round));
@@ -1457,7 +1462,11 @@ test("added images are objects: move, resize, replace, delete", () => {
   expect(imageCount(pdf)).toBe(1);
   moveObject(ctx, id, 10, 5);
   resizeObject(ctx, id, [110, 105, 310, 205]);
-  expect(listExistingImages(pdf.loadPage(0))[0].rect.map(Math.round)).toEqual([110, 105, 310, 205]);
+  expect(listObjects(ctx.page)[0].rect).toEqual([110, 105, 310, 205]);
+  const drawn: number[][] = [];
+  pdf.loadPage(0).toStructuredText("preserve-images").walk({ onImageBlock: (bbox) => void drawn.push(bbox.map(Math.round)) });
+  expect(drawn).toEqual([[110, 105, 310, 205]]);
+  expect(listExistingImages(pdf.loadPage(0))).toEqual([]); // LeoPDF's own images are listed as objects, not existing images
   replaceObjectImage(ctx, id, image(10, 10, 255));
   expect(imageCount(pdf)).toBe(1);
   deleteObject(ctx, id);

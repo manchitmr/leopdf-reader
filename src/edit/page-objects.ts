@@ -131,3 +131,48 @@ export function deleteObject(ctx: EditContext, id: string): void {
   removeContent(ctx.page, stored.entry.get("Stream"));
   ctx.page.getObject().get("LeoPDFObjects").delete(stored.index);
 }
+export function defaultImageRect(pageBounds: Rect, image: mupdf.Image): Rect {
+  const [px0, py0, px1, py1] = pageBounds;
+  const pageW = px1 - px0;
+  const pageH = py1 - py0;
+  // Assume 96 dpi for images without useful resolution info.
+  let w = (image.getWidth() * 72) / 96;
+  let h = (image.getHeight() * 72) / 96;
+  const scale = Math.min(1, (pageW * 0.8) / w, (pageH * 0.8) / h);
+  w *= scale;
+  h *= scale;
+  const x0 = px0 + (pageW - w) / 2;
+  const y0 = py0 + (pageH - h) / 2;
+  return [x0, y0, x0 + w, y0 + h];
+}
+
+function registerImage(ctx: EditContext, image: mupdf.Image): { name: string; ref: mupdf.PDFObject } {
+  const xobjects = ensureOwnResources(ctx.pdf, ctx.page).get("XObject");
+  const ref = ctx.pdf.addImage(image);
+  let n = 1;
+  while (!xobjects.get(`LeoIm${n}`).isNull()) n++;
+  const name = `LeoIm${n}`;
+  xobjects.put(name, ref);
+  return { name, ref };
+}
+
+export function addImageObject(ctx: EditContext, image: mupdf.Image, rect: Rect): string {
+  const { name, ref } = registerImage(ctx, image);
+  const object: PageObject = { id: nextId(ctx, "i"), kind: "image", rect };
+  storeObject(ctx, object, imageBody(ctx, name, rect), { Image: ref, Name: ctx.pdf.newName(name) });
+  return object.id;
+}
+
+export function resizeObject(ctx: EditContext, id: string, rect: Rect): void {
+  const stored = findStored(ctx.page, id);
+  if (stored.object.kind !== "image") throw new Error(`Object ${id} is not an image`);
+  rewriteObject(ctx, stored, { ...stored.object, rect }, imageBody(ctx, stored.entry.get("Name").asName(), rect));
+}
+
+export function replaceObjectImage(ctx: EditContext, id: string, image: mupdf.Image): void {
+  const stored = findStored(ctx.page, id);
+  const { name, ref } = registerImage(ctx, image);
+  stored.entry.put("Image", ref);
+  stored.entry.put("Name", ctx.pdf.newName(name));
+  rewriteObject(ctx, stored, stored.object, imageBody(ctx, name, stored.object.rect));
+}
