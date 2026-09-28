@@ -10,6 +10,7 @@ import { copySelection } from "./copy";
 import { DocMessage } from "./DocMessage";
 import { LeftPanel } from "./LeftPanel";
 import { openSource, reopenAll } from "./open-document";
+import { PasswordDialog } from "./PasswordDialog";
 import { SearchBar } from "./SearchBar";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
@@ -94,11 +95,15 @@ export function App() {
       <main className="workspace">
         {!tab && <Welcome />}
         {tab?.status === "loading" && <DocMessage>{t("loading")}</DocMessage>}
+        {tab?.status === "locked" && <PasswordDialog key={tab.id} tab={tab} />}
         {tab?.status === "error" && <DocMessage tone="error">{t(tab.error ?? "errorCorrupt", { name: tab.name })}</DocMessage>}
         {tab?.status === "ready" && (
           <>
             <LeftPanel tab={tab} />
-            <PageView key={tab.id} tab={tab} />
+            <div className="doc-area">
+              {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
+              <PageView key={tab.id} tab={tab} />
+            </div>
           </>
         )}
         {tab?.status === "ready" && searchOpen && <SearchBar key={tab.id} tab={tab} />}
