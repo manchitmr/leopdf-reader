@@ -8,16 +8,17 @@ import { PageCanvas } from "../viewer/PageCanvas";
 
 const THUMB_WIDTH = 120;
 
-function Thumbnail({ tab, page }: { tab: DocTab; page: number }) {
+/** One page thumbnail. Its canvas exists only while it is (nearly) on screen, to bound memory and worker load. */
+export function Thumbnail({ tab, page }: { tab: DocTab; page: number }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const [seen, setSeen] = useState(false);
+  const [visible, setVisible] = useState(false);
   const bounds = tab.info!.pages[page].bounds;
   const zoom = THUMB_WIDTH / (tab.rotation % 180 === 0 ? bounds[2] - bounds[0] : bounds[3] - bounds[1]);
   const t = pageTransform(bounds, zoom, tab.rotation);
   const active = tab.currentPage === page;
 
   useEffect(() => {
-    const io = new IntersectionObserver(([entry]) => entry.isIntersecting && setSeen(true), { rootMargin: "200px" });
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: "200px" });
     io.observe(ref.current!);
     return () => io.disconnect();
   }, []);
@@ -29,7 +30,7 @@ function Thumbnail({ tab, page }: { tab: DocTab; page: number }) {
   return (
     <button ref={ref} className={`thumb ${active ? "active" : ""}`} onClick={() => appStore.getState().goToPage(tab.id, page)}>
       <div className="thumb-page" style={{ width: t.width, height: t.height }}>
-        {seen && <PageCanvas docId={tab.id} page={page} bounds={bounds} zoom={zoom} rotation={tab.rotation} width={t.width} height={t.height} />}
+        {visible && <PageCanvas docId={tab.id} page={page} bounds={bounds} zoom={zoom} rotation={tab.rotation} width={t.width} height={t.height} />}
       </div>
       <span>{tab.info!.pages[page].label}</span>
     </button>
