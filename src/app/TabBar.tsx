@@ -21,7 +21,10 @@ export function TabBar() {
           onAuxClick={(e) => e.button === 1 && void requestClose(tab.id)}
           title={tab.path ?? tab.name}
         >
-          <span className="tab-name">{tab.name}</span>
+          <span className="tab-name">
+            {tab.dirty && <span className="dirty-dot" aria-hidden="true">• </span>}
+            {tab.name}
+          </span>
           <button
             className="icon-button small"
             aria-label={t("closeTab")}

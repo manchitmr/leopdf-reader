@@ -11,10 +11,12 @@ interface Props {
   rotation: Rotation;
   width: number;
   height: number;
+  /** Document revision: bumps after edits so the page is drawn again. */
+  revision?: number;
 }
 
 /** Renders one page into a canvas; stale renders (after zoom/rotate/unmount) are dropped. */
-export function PageCanvas({ docId, page, bounds, zoom, rotation, width, height }: Props) {
+export function PageCanvas({ docId, page, bounds, zoom, rotation, width, height, revision = 0 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function PageCanvas({ docId, page, bounds, zoom, rotation, width, height 
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [docId, page, bounds, zoom, rotation]);
+  }, [docId, page, bounds, zoom, rotation, revision]);
 
   return <canvas ref={ref} className="page-canvas" style={{ width, height }} />;
 }
