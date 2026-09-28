@@ -43,3 +43,5 @@ export interface Selection {
   rects: Rect[];
   text: string;
 }
+
+export type Matrix = [number, number, number, number, number, number];
