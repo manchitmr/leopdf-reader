@@ -73,3 +73,47 @@ test("closing removes the tab and frees the engine document", async () => {
   expect(store.getState().tabs).toEqual([]);
   expect(engine.close).toHaveBeenCalledWith(id);
 });
+
+test("an engine failure while opening shows an error instead of loading forever", async () => {
+  const store = newStore();
+  const engine = { ...fakeEngine(), open: vi.fn(async (): Promise<OpenResult> => Promise.reject(new Error("wasm failed"))) };
+  const id = await openSource(source("/a.pdf"), store, engine);
+  expect(getTab(store.getState(), id)).toMatchObject({ status: "error", error: "errorCorrupt" });
+});
+
+test("an engine failure while unlocking shows an error", async () => {
+  const store = newStore();
+  const engine = { ...fakeEngine({ status: "needs-password" }), unlock: vi.fn(async (): Promise<OpenResult> => Promise.reject(new Error("boom"))) };
+  const id = await openSource(source("/p.pdf"), store, engine);
+  await unlockTab(id, "x", store, engine);
+  expect(getTab(store.getState(), id)!.status).toBe("error");
+});
+
+test("closing a tab while its file is still being read never sends it to the engine", async () => {
+  const store = newStore();
+  const engine = fakeEngine();
+  let finishLoad!: (b: Uint8Array) => void;
+  const opening = openSource(source("/slow.pdf", () => new Promise<Uint8Array>((r) => (finishLoad = r))), store, engine);
+  const id = store.getState().tabs[0].id;
+  await closeDocument(id, store, engine);
+  finishLoad(new Uint8Array([1]));
+  await opening;
+  expect(engine.open).not.toHaveBeenCalled();
+  expect(store.getState().recent).toEqual([]);
+});
+
+test("closing a tab while the engine is opening it frees the engine document afterwards", async () => {
+  const store = newStore();
+  let finishOpen!: (r: OpenResult) => void;
+  const engine = { ...fakeEngine(), open: vi.fn(() => new Promise<OpenResult>((r) => (finishOpen = r))) };
+  const opening = openSource(source("/slow.pdf"), store, engine);
+  await vi.waitFor(() => expect(engine.open).toHaveBeenCalled());
+  const id = store.getState().tabs[0].id;
+  await closeDocument(id, store, engine);
+  finishOpen(okResult);
+  await opening;
+  expect(engine.close).toHaveBeenCalledTimes(2);
+  expect(engine.close).toHaveBeenLastCalledWith(id);
+  expect(store.getState().recent).toEqual([]);
+  expect(store.getState().tabs).toEqual([]);
+});

@@ -1,7 +1,7 @@
 import { getEngine } from "../engine/client";
 import type { OpenResult } from "../engine/types";
 import type { PdfSource } from "../platform/sources";
-import { appStore, type AppStore } from "../state/store";
+import { appStore, getTab, type AppStore } from "../state/store";
 
 /** The engine calls this module needs (the worker proxy satisfies it; tests pass fakes). */
 export interface EngineLike {
@@ -14,15 +14,29 @@ export interface EngineLike {
 const sources = new Map<string, PdfSource>();
 
 async function load(id: string, src: PdfSource, store: AppStore, engine: EngineLike): Promise<void> {
+  // The user may close the tab at any await below; stop (and free engine memory) if so.
+  const isOpen = () => getTab(store.getState(), id) !== undefined;
   let bytes: Uint8Array;
   try {
     bytes = await src.load();
   } catch {
+    if (!isOpen()) return;
     store.getState().setError(id, "errorRead");
     if (src.path) store.getState().dropRecent(src.path);
     return;
   }
-  const result = await engine.open(id, bytes);
+  if (!isOpen()) return;
+  let result: OpenResult;
+  try {
+    result = await engine.open(id, bytes);
+  } catch {
+    if (isOpen()) store.getState().setError(id, "errorCorrupt");
+    return;
+  }
+  if (!isOpen()) {
+    await engine.close(id);
+    return;
+  }
   store.getState().setOpenResult(id, result);
   if (result.status !== "error" && src.path) store.getState().pushRecent(src.path);
 }
@@ -36,7 +50,11 @@ export async function openSource(src: PdfSource, store: AppStore = appStore, eng
 }
 
 export async function unlockTab(id: string, password: string, store: AppStore = appStore, engine: EngineLike = getEngine()): Promise<void> {
-  store.getState().setOpenResult(id, await engine.unlock(id, password));
+  try {
+    store.getState().setOpenResult(id, await engine.unlock(id, password));
+  } catch {
+    store.getState().setError(id, "errorCorrupt");
+  }
 }
 
 export async function closeDocument(id: string, store: AppStore = appStore, engine: EngineLike = getEngine()): Promise<void> {
