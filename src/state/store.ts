@@ -1,8 +1,10 @@
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
-import type { DocInfo, OpenResult, Rect, Rotation, SearchHit } from "../engine/types";
+import type { HistoryState, TextStyle } from "../edit/types";
+import type { DocInfo, OpenResult, Point, Rect, Rotation, SearchHit } from "../engine/types";
 import { detectLang, type Lang, type StringKey } from "../i18n/strings";
 import { addRecent, loadRecent, removeRecent, type RecentFile } from "../platform/recent";
+import { baseName } from "../platform/sources";
 import { clampZoom, stepZoom } from "./zoom";
 
 export type ViewMode = "continuous" | "single" | "two";
@@ -11,6 +13,30 @@ export type Tool = "select" | "hand";
 export type Theme = "system" | "light" | "dark";
 export type LeftPanel = "thumbnails" | "bookmarks" | null;
 export type TabStatus = "loading" | "ready" | "locked" | "error";
+export type EditTool = "select" | "text";
+
+/** A selected item in Edit mode. `id: null` means an image from the original PDF (identified by its rect). */
+export interface Selected {
+  tabId: string;
+  page: number;
+  id: string | null;
+  rect: Rect;
+}
+
+export interface InlineEditorState {
+  tabId: string;
+  page: number;
+  /** Baseline start of the first line, page space. */
+  origin: Point;
+  /** Existing LeoPDF text object being edited, or null for new text. */
+  objectId: string | null;
+  text: string;
+  style: TextStyle;
+}
+
+export type DialogState =
+  | { kind: "unsaved"; tabIds: string[]; action: "close" | "quit" }
+  | { kind: "signed"; tabId: string };
 
 export interface SearchState {
   query: string;
@@ -43,6 +69,12 @@ export interface DocTab {
   scrollRequest: { page: number; nonce: number } | null;
   search: SearchState;
   selection: TabSelection | null;
+  dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  /** Bumped on every edit so pages and thumbnails re-render. */
+  revision: number;
+  signedAcknowledged: boolean;
 }
 
 export interface Settings {
@@ -59,6 +91,13 @@ export interface AppState extends Settings {
   searchOpen: boolean;
   /** A full-window busy message, e.g. while preparing to print. */
   busy: StringKey | null;
+  editMode: boolean;
+  editTool: EditTool;
+  textStyle: TextStyle;
+  selected: Selected | null;
+  inlineEditor: InlineEditorState | null;
+  dialog: DialogState | null;
+  notice: { key: StringKey; vars?: Record<string, string | number> } | null;
 
   addTab(source: { key: string; name: string; path: string | null }): { id: string; existed: boolean };
   setOpenResult(id: string, result: OpenResult): void;
@@ -86,6 +125,19 @@ export interface AppState extends Settings {
   pushRecent(path: string): void;
   dropRecent(path: string): void;
   setBusy(key: StringKey | null): void;
+  setEditMode(on: boolean): void;
+  setEditTool(tool: EditTool): void;
+  setTextStyle(partial: Partial<TextStyle>): void;
+  applyHistory(id: string, history: HistoryState): void;
+  select(selected: Selected | null): void;
+  openInlineEditor(state: InlineEditorState): void;
+  updateInlineText(text: string): void;
+  closeInlineEditor(): void;
+  setDialog(dialog: DialogState | null): void;
+  acknowledgeSigned(id: string): void;
+  markSaved(id: string, path: string | null, history: HistoryState): void;
+  showNotice(key: StringKey, vars?: Record<string, string | number>): void;
+  clearNotice(): void;
 }
 
 const EMPTY_SEARCH: SearchState = { query: "", hits: [], active: 0, running: false };
@@ -128,6 +180,13 @@ export function createAppStore(init: Partial<Settings> = {}) {
       leftPanel: "thumbnails",
       searchOpen: false,
       busy: null,
+      editMode: false,
+      editTool: "select",
+      textStyle: { family: "sans", bold: false, size: 12, color: [0, 0, 0] },
+      selected: null,
+      inlineEditor: null,
+      dialog: null,
+      notice: null,
 
       addTab(source) {
         const existing = get().tabs.find((t) => t.key === source.key);
@@ -150,6 +209,11 @@ export function createAppStore(init: Partial<Settings> = {}) {
           scrollRequest: null,
           search: EMPTY_SEARCH,
           selection: null,
+          dirty: false,
+          canUndo: false,
+          canRedo: false,
+          revision: 0,
+          signedAcknowledged: false,
         };
         set((s) => ({ tabs: [...s.tabs, tab], activeId: tab.id }));
         return { id: tab.id, existed: false };
@@ -222,6 +286,35 @@ export function createAppStore(init: Partial<Settings> = {}) {
       pushRecent: (path) => set((s) => ({ recent: addRecent(s.recent, path) })),
       dropRecent: (path) => set((s) => ({ recent: removeRecent(s.recent, path) })),
       setBusy: (busy) => set({ busy }),
+      setEditMode: (editMode) => set(editMode ? { editMode } : { editMode, editTool: "select", selected: null, inlineEditor: null }),
+      setEditTool: (editTool) => set({ editTool, selected: null }),
+      setTextStyle: (partial) => set((s) => ({ textStyle: { ...s.textStyle, ...partial } })),
+      applyHistory: (id, history) =>
+        update(id, (t) => ({
+          dirty: history.dirty,
+          canUndo: history.canUndo,
+          canRedo: history.canRedo,
+          revision: t.revision + 1,
+          search: EMPTY_SEARCH,
+          selection: null,
+        })),
+      select: (selected) => set({ selected }),
+      openInlineEditor: (inlineEditor) => set({ inlineEditor, selected: null }),
+      updateInlineText: (text) => set((s) => (s.inlineEditor ? { inlineEditor: { ...s.inlineEditor, text } } : {})),
+      closeInlineEditor: () => set({ inlineEditor: null }),
+      setDialog: (dialog) => set({ dialog }),
+      acknowledgeSigned: (id) => update(id, () => ({ signedAcknowledged: true })),
+      markSaved(id, path, history) {
+        update(id, (t) => ({
+          dirty: history.dirty,
+          canUndo: history.canUndo,
+          canRedo: history.canRedo,
+          ...(path && path !== t.path ? { path, key: path, name: baseName(path) } : {}),
+        }));
+        if (path) get().pushRecent(path);
+      },
+      showNotice: (key, vars) => set({ notice: { key, vars } }),
+      clearNotice: () => set({ notice: null }),
     };
   });
 }
