@@ -127,3 +127,6 @@ button, input, select { font: inherit; color: inherit; }
 .page-overlay { position: absolute; inset: 0; pointer-events: none; }
 .hit { position: absolute; background: var(--hit); mix-blend-mode: multiply; }
 .hit.active { background: var(--hit-active); }
+
+.page-view.tool-select .page-slot { cursor: text; }
+.selection { position: absolute; background: var(--selection); }

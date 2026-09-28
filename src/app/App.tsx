@@ -6,6 +6,7 @@ import { saveRecent } from "../platform/recent";
 import { isPdfName, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
 import { PageView } from "../viewer/PageView";
+import { copySelection } from "./copy";
 import { DocMessage } from "./DocMessage";
 import { LeftPanel } from "./LeftPanel";
 import { openSource, reopenAll } from "./open-document";
@@ -62,7 +63,18 @@ export function App() {
   );
 
   const onPrint = useCallback(() => {}, []);
-  const onCopy = useCallback(() => {}, []);
+  const [copied, setCopied] = useState(false);
+  const onCopy = useCallback(() => {
+    copySelection()
+      .then((ok) => {
+        if (!ok) return;
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      })
+      .catch(() => {
+        // Clipboard write refused (no permission / no user gesture): nothing to show.
+      });
+  }, []);
   const handlers = useMemo(() => ({ onPrint, onCopy }), [onPrint, onCopy]);
   useShortcuts(handlers);
 
@@ -92,6 +104,7 @@ export function App() {
         {tab?.status === "ready" && searchOpen && <SearchBar key={tab.id} tab={tab} />}
       </main>
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
+      {copied && <div className="toast">{t("copied")}</div>}
       {busy && <div className="busy-overlay">{t(busy)}</div>}
     </div>
   );
