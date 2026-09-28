@@ -52,3 +52,22 @@ Contributions are welcome, especially from Sinhala and Tamil speakers: test docu
 ## License
 
 [AGPL-3.0-or-later](LICENSE). LeoPDF uses MuPDF, which is AGPL-licensed.
+
+## Development
+
+Requirements: Node.js 22+, Rust (stable, via [rustup](https://rustup.rs)), and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
+
+```bash
+npm install
+npm run tauri dev      # run the desktop app
+npm test               # unit tests
+npm run tauri build    # build installers for your OS
+```
+
+`npm run dev` also runs the UI in a normal browser at http://localhost:1420 (file picker instead of native dialogs), which is handy for quick UI work.
+
+### Opening unsigned builds
+
+Early releases are not code-signed yet.
+- **macOS:** right-click the app → Open → Open.
+- **Windows:** on the SmartScreen warning click "More info" → "Run anyway".
