@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { activeTab, appStore } from "../state/store";
-import { closeDocument } from "./open-document";
+import { requestClose } from "./edit-actions";
 import { openFromPicker } from "./Toolbar";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -21,7 +21,7 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
           o: () => void openFromPicker(),
           p: ready ? handlers.onPrint : undefined,
           f: ready ? () => s.setSearchOpen(true) : undefined,
-          w: tab ? () => void closeDocument(tab.id) : undefined,
+          w: tab ? () => void requestClose(tab.id) : undefined,
           "=": ready ? () => s.zoomBy(tab.id, 1) : undefined,
           "+": ready ? () => s.zoomBy(tab.id, 1) : undefined,
           "-": ready ? () => s.zoomBy(tab.id, -1) : undefined,
