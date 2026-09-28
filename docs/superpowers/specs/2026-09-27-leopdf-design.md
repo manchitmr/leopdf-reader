@@ -14,7 +14,7 @@
 - Desktop first, shipped as native installers (`.dmg` on macOS, `.exe`/`.msi` on Windows).
 
 ### Assumptions (open to correction)
-- Primary users: students, government offices, lawyers, printers/publishers, and general users in Sri Lanka and Tamil Nadu who handle Sinhala/Tamil/English documents.
+- Primary users: students, government offices, lawyers, printers/publishers, and general users in Sri Lanka who handle Sinhala/Tamil/English documents.
 - Users may have modest hardware, so installer size and memory use matter.
 - Offline-first: no account, no cloud dependency, no telemetry by default.
 - The app will evolve iteratively; the owner will review and adjust as releases land.
@@ -115,7 +115,7 @@ The UI never calls mupdf.js directly; it goes through `DocumentEngine` in the wo
 - **Round-trip tests**: write Sinhala/Tamil text → save → re-extract text → must equal the input after normalisation.
 - **OCR accuracy**: character error rate (CER) must stay under a threshold per corpus set; regressions fail CI.
 - **E2E (Playwright + Tauri driver)** for core flows: open, search, annotate, save, reopen.
-- **CI (GitHub Actions)** on Windows, macOS, and Linux for every PR.
+- **CI (GitHub Actions)** on Windows and macOS for every PR (Linux added when Linux builds start).
 
 ## 7. Distribution
 
@@ -123,7 +123,7 @@ The UI never calls mupdf.js directly; it goes through `DocumentEngine` in the wo
 |---|---|
 | macOS | `.dmg` (universal binary: Apple Silicon + Intel). `.pkg` optional via `productbuild`. |
 | Windows | `.exe` (NSIS) and `.msi` |
-| Linux | `.AppImage`, `.deb`, `.rpm` |
+| Linux | `.AppImage`, `.deb`, `.rpm` — after Windows is solid |
 
 - **Release pipeline:** pushing a tag like `v0.1.0` triggers GitHub Actions (`tauri-action`) to build all installers and publish them to GitHub Releases. The Tauri updater reads from the same releases.
 - **Signing:**
