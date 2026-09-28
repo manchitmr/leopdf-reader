@@ -1,4 +1,5 @@
 import { expose } from "comlink";
-import { createEngineApi } from "./engine-api";
+import { lazyApi } from "./lazy-api";
 
-expose(createEngineApi());
+// Expose before MuPDF finishes loading so no early message is lost (see lazy-api.ts).
+expose(lazyApi(() => import("./engine-api").then((m) => m.createEngineApi())));

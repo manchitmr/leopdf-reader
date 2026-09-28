@@ -5,6 +5,7 @@ import { onNativeDrop } from "../platform/native";
 import { saveRecent } from "../platform/recent";
 import { isPdfName, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
+import { PageView } from "../viewer/PageView";
 import { DocMessage } from "./DocMessage";
 import { openSource, reopenAll } from "./open-document";
 import { TabBar } from "./TabBar";
@@ -79,7 +80,7 @@ export function App() {
         {!tab && <Welcome />}
         {tab?.status === "loading" && <DocMessage>{t("loading")}</DocMessage>}
         {tab?.status === "error" && <DocMessage tone="error">{t(tab.error ?? "errorCorrupt", { name: tab.name })}</DocMessage>}
-        {tab?.status === "ready" && <div className="viewer-placeholder">{tab.name}</div>}
+        {tab?.status === "ready" && <PageView key={tab.id} tab={tab} />}
       </main>
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
       {busy && <div className="busy-overlay">{t(busy)}</div>}

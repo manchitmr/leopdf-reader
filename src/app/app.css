@@ -94,3 +94,11 @@ button, input, select { font: inherit; color: inherit; }
 .busy-overlay {
   position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.35); color: #fff; font-size: 16px;
 }
+
+.page-view { flex: 1; overflow: auto; position: relative; }
+.page-view.tool-hand { cursor: grab; }
+.page-view.tool-hand:active { cursor: grabbing; }
+.page-layer { position: relative; }
+.page-layer-inner { position: relative; margin: 0 auto; }
+.page-slot { position: absolute; background: #fff; box-shadow: var(--shadow); }
+.page-canvas { display: block; }
