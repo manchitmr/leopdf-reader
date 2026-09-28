@@ -3,10 +3,20 @@ import { useEffect, useRef, useState } from "react";
 import { getEngine } from "../engine/client";
 import type { SearchHit } from "../engine/types";
 import { useT } from "../i18n/useT";
-import { appStore, type DocTab } from "../state/store";
+import { appStore, getTab, type DocTab } from "../state/store";
+import { runChunkedSearch } from "./search-runner";
 
-type RunSearch = (docId: string, query: string) => Promise<SearchHit[]>;
-const engineSearch: RunSearch = (docId, query) => getEngine().search(docId, query);
+/** Resolves to the hits, or null if the search was superseded or cancelled. */
+type RunSearch = (docId: string, query: string) => Promise<SearchHit[] | null>;
+
+const engineSearch: RunSearch = (docId, query) => {
+  const pageCount = getTab(appStore.getState(), docId)?.info?.pageCount ?? 0;
+  const isCurrent = () => {
+    const tab = getTab(appStore.getState(), docId);
+    return tab !== undefined && tab.search.running && tab.search.query === query;
+  };
+  return runChunkedSearch(docId, query, pageCount, (id, q, from, to) => getEngine().search(id, q, from, to), isCurrent);
+};
 
 export function SearchBar({ tab, runSearch = engineSearch }: { tab: DocTab; runSearch?: RunSearch }) {
   const t = useT();
@@ -27,8 +37,13 @@ export function SearchBar({ tab, runSearch = engineSearch }: { tab: DocTab; runS
       return;
     }
     s.startSearch(tab.id, text);
-    const results = await runSearch(tab.id, text);
-    appStore.getState().setSearchResults(tab.id, text, results);
+    let results: SearchHit[] | null;
+    try {
+      results = await runSearch(tab.id, text);
+    } catch {
+      results = [];
+    }
+    if (results) appStore.getState().setSearchResults(tab.id, text, results);
   };
 
   const close = () => {

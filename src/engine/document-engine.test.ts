@@ -90,3 +90,10 @@ test("closed documents are forgotten", () => {
 test("a document with no pages is reported as corrupt", () => {
   expect(engine.open("z", fixture.slice(0, 500))).toEqual({ status: "error", reason: "corrupt" });
 });
+
+test("search can be limited to a page range", () => {
+  engine.open("a", fixture);
+  expect(engine.search("a", "chapter", 0, 1).map((h) => h.page)).toEqual([0]);
+  expect(engine.search("a", "chapter", 1, 2).map((h) => h.page)).toEqual([1]);
+  expect(engine.search("a", "chapter", 1, 99).map((h) => h.page)).toEqual([1]);
+});

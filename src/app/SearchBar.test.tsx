@@ -39,3 +39,24 @@ test("no hits shows 'No results'", async () => {
   view.rerender(<SearchBar tab={getTab(appStore.getState(), id)!} runSearch={async () => []} />);
   expect(screen.getByText("No results")).toBeTruthy();
 });
+
+test("a failed search stops 'Searching…' and shows no results", async () => {
+  const failing = async () => Promise.reject(new Error("worker died"));
+  const view = render(<SearchBar tab={getTab(appStore.getState(), id)!} runSearch={failing} />);
+  const input = screen.getByPlaceholderText("Find in document");
+  fireEvent.change(input, { target: { value: "x" } });
+  await act(async () => fireEvent.keyDown(input, { key: "Enter" }));
+  view.rerender(<SearchBar tab={getTab(appStore.getState(), id)!} runSearch={failing} />);
+  expect(getTab(appStore.getState(), id)!.search.running).toBe(false);
+  expect(screen.getByText("No results")).toBeTruthy();
+});
+
+test("a cancelled search (null result) leaves the store untouched", async () => {
+  const view = render(<SearchBar tab={getTab(appStore.getState(), id)!} runSearch={async () => null} />);
+  const input = screen.getByPlaceholderText("Find in document");
+  fireEvent.change(input, { target: { value: "x" } });
+  appStore.getState().setSearchOpen(true);
+  await act(async () => fireEvent.keyDown(input, { key: "Enter" }));
+  view.rerender(<SearchBar tab={getTab(appStore.getState(), id)!} runSearch={async () => null} />);
+  expect(getTab(appStore.getState(), id)!.search).toMatchObject({ query: "x", running: true });
+});

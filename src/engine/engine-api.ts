@@ -14,7 +14,7 @@ export function createEngineApi(engine = new DocumentEngine()) {
       const png = engine.renderPng(docId, page, scale);
       return transfer(png, [png.buffer as ArrayBuffer]);
     },
-    search: (docId: string, query: string) => engine.search(docId, query),
+    search: (docId: string, query: string, from?: number, to?: number) => engine.search(docId, query, from, to),
     select: (docId: string, page: number, from: Point, to: Point) => engine.select(docId, page, from, to),
     close: (docId: string) => engine.close(docId),
   };

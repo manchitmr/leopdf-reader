@@ -93,10 +93,11 @@ export class DocumentEngine {
     return png;
   }
 
-  search(docId: string, query: string): SearchHit[] {
+  /** Searches pages [from, to) — callers search in chunks so renders can run in between. */
+  search(docId: string, query: string, from = 0, to = Infinity): SearchHit[] {
     const hits: SearchHit[] = [];
-    const count = this.get(docId).doc.countPages();
-    for (let p = 0; p < count && hits.length < MAX_HITS; p++) {
+    const end = Math.min(to, this.get(docId).doc.countPages());
+    for (let p = Math.max(0, from); p < end && hits.length < MAX_HITS; p++) {
       for (const rects of findInPage(this.prepared(docId, p), query, MAX_HITS - hits.length)) {
         hits.push({ page: p, rects });
       }
