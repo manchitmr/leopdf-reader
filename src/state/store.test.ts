@@ -8,6 +8,8 @@ const info = (pageCount: number): DocInfo => ({
   outline: [],
   title: null,
   repaired: false,
+  editable: true,
+  signed: false,
 });
 const src = (key: string) => ({ key, name: `${key}.pdf`, path: `/${key}.pdf` });
 

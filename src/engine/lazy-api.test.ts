@@ -10,7 +10,8 @@ test("calls made before the engine has loaded are answered once it loads", async
   expect(await pending).toEqual([{ page: 0, rects: [], id: "doc", q: "ශ්රී" }]);
 });
 
-test("exposes every engine method", () => {
+test("exposes every engine method", async () => {
+  const { createEngineApi } = await import("./engine-api");
   const api = lazyApi(() => new Promise<EngineApi>(() => {}));
-  expect(Object.keys(api).sort()).toEqual(["close", "open", "render", "renderPng", "search", "select", "unlock"]);
+  expect(Object.keys(api).sort()).toEqual(Object.keys(createEngineApi()).sort());
 });

@@ -6,7 +6,7 @@ import { closeDocument, openSource, unlockTab, type EngineLike } from "./open-do
 
 const okResult: OpenResult = {
   status: "ok",
-  info: { pageCount: 1, pages: [{ bounds: [0, 0, 100, 100], label: "1" }], outline: [], title: null, repaired: false },
+  info: { pageCount: 1, pages: [{ bounds: [0, 0, 100, 100], label: "1" }], outline: [], title: null, repaired: false, editable: true, signed: false },
 };
 
 function fakeEngine(result: OpenResult = okResult) {
