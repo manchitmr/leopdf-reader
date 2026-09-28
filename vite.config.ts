@@ -8,6 +8,6 @@ export default defineConfig({
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: { target: "esnext" },
   worker: { format: "es" },
-  optimizeDeps: { exclude: ["mupdf"] },
+  optimizeDeps: { exclude: ["mupdf", "harfbuzzjs"] },
   test: { environment: "node", include: ["src/**/*.test.{ts,tsx}"] },
 });
