@@ -49,3 +49,35 @@ test("waitForImage resolves for already-loaded images and on load, rejects on er
   (broken.onerror as (e: Event) => void)(new Event("error"));
   await expect(failing).rejects.toThrow("could not load");
 });
+
+function readyTab(bounds: [number, number, number, number], pageCount = 1) {
+  const store = createAppStore({ lang: "en", theme: "system", recent: [] });
+  const { id } = store.getState().addTab({ key: "a", name: "a.pdf", path: null });
+  store.getState().setOpenResult(id, {
+    status: "ok",
+    info: { pageCount, pages: Array(pageCount).fill({ bounds, label: "1" }), outline: [], title: null, repaired: false },
+  });
+  return { store, tab: getTab(store.getState(), id)! };
+}
+
+test("huge pages are printed within the pixel budget", async () => {
+  const { MAX_RENDER_PIXELS } = await import("../viewer/layout");
+  const { store, tab } = readyTab([0, 0, 14400, 14400]);
+  const renderPng = vi.fn(async () => new Uint8Array([1]));
+  await printDocument(tab, { renderPng, print: async () => {}, root: document.createElement("div"), store, afterPrint: async () => {}, decode: async () => {} });
+  const scale = (renderPng.mock.calls[0] as unknown as [string, number, number])[2];
+  expect(14400 * scale * 14400 * scale).toBeLessThanOrEqual(MAX_RENDER_PIXELS + 1);
+});
+
+test("a second print request while one is in progress is ignored", async () => {
+  const { store, tab } = readyTab([0, 0, 100, 100]);
+  const renderPng = vi.fn(async () => new Uint8Array([1]));
+  let finish!: () => void;
+  const deps = { renderPng, print: async () => {}, root: document.createElement("div"), store, afterPrint: () => new Promise<void>((r) => (finish = r)), decode: async () => {} };
+  const first = printDocument(tab, deps);
+  await vi.waitFor(() => expect(renderPng).toHaveBeenCalledTimes(1));
+  await printDocument(tab, deps);
+  expect(renderPng).toHaveBeenCalledTimes(1);
+  finish();
+  await first;
+});

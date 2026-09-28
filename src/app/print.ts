@@ -1,6 +1,7 @@
 import { getEngine } from "../engine/client";
 import { printWindow } from "../platform/native";
 import { appStore, type AppStore, type DocTab } from "../state/store";
+import { renderScale } from "../viewer/layout";
 
 /** 2× = 144 dpi: sharp on paper without huge memory use. */
 export const PRINT_SCALE = 2;
@@ -16,6 +17,9 @@ interface PrintDeps {
 }
 
 const PRINT_CLEANUP_TIMEOUT = 10 * 60_000;
+
+/** One print job at a time: a second job would share #print-root and interleave pages. */
+let printing = false;
 
 /**
  * Waits for an image to load. (HTMLImageElement.decode() never settles for images inside the hidden
@@ -43,12 +47,14 @@ const defaults = (): PrintDeps => ({
 });
 
 export async function printDocument(tab: DocTab, deps: Partial<PrintDeps> = {}): Promise<void> {
+  if (printing) return;
+  printing = true;
   const { renderPng, print, root, store, decode, afterPrint } = { ...defaults(), ...deps };
   const urls: string[] = [];
   store.getState().setBusy("preparingPrint");
   try {
     for (let page = 0; page < tab.info!.pageCount; page++) {
-      const png = await renderPng(tab.id, page, PRINT_SCALE);
+      const png = await renderPng(tab.id, page, renderScale(tab.info!.pages[page].bounds, PRINT_SCALE, 1));
       const url = URL.createObjectURL(new Blob([png as Uint8Array<ArrayBuffer>], { type: "image/png" }));
       urls.push(url);
       const img = document.createElement("img");
@@ -61,6 +67,7 @@ export async function printDocument(tab: DocTab, deps: Partial<PrintDeps> = {}):
     await print();
     await finished;
   } finally {
+    printing = false;
     store.getState().setBusy(null);
     root.replaceChildren();
     urls.forEach((u) => URL.revokeObjectURL(u));
