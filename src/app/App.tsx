@@ -7,6 +7,7 @@ import { isPdfName, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
 import { PageView } from "../viewer/PageView";
 import { DocMessage } from "./DocMessage";
+import { LeftPanel } from "./LeftPanel";
 import { openSource, reopenAll } from "./open-document";
 import { TabBar } from "./TabBar";
 import { Toolbar } from "./Toolbar";
@@ -80,7 +81,12 @@ export function App() {
         {!tab && <Welcome />}
         {tab?.status === "loading" && <DocMessage>{t("loading")}</DocMessage>}
         {tab?.status === "error" && <DocMessage tone="error">{t(tab.error ?? "errorCorrupt", { name: tab.name })}</DocMessage>}
-        {tab?.status === "ready" && <PageView key={tab.id} tab={tab} />}
+        {tab?.status === "ready" && (
+          <>
+            <LeftPanel tab={tab} />
+            <PageView key={tab.id} tab={tab} />
+          </>
+        )}
       </main>
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
       {busy && <div className="busy-overlay">{t(busy)}</div>}
