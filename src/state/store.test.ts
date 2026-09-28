@@ -118,3 +118,21 @@ test("recent files are pushed and dropped", () => {
   store.getState().dropRecent("/x.pdf");
   expect(store.getState().recent).toEqual([]);
 });
+
+test("non-numeric page input leaves the current page unchanged", () => {
+  const { store, id, tab } = storeWithDoc(5);
+  store.getState().goToPage(id, 3);
+  store.getState().goToPage(id, Number("iv") - 1);
+  expect(tab().currentPage).toBe(3);
+  store.getState().setCurrentPage(id, NaN);
+  expect(tab().currentPage).toBe(3);
+});
+
+test("switching back to a tab asks the viewer to restore its page", () => {
+  const { store, id, tab } = storeWithDoc(50);
+  store.getState().setCurrentPage(id, 40);
+  const other = store.getState().addTab(src("b")).id;
+  store.getState().activate(other);
+  store.getState().activate(id);
+  expect(tab().scrollRequest?.page).toBe(40);
+});

@@ -93,6 +93,7 @@ let tabCounter = 0;
 let nonceCounter = 0;
 
 function clampPage(tab: DocTab, page: number): number {
+  if (!Number.isFinite(page)) return tab.currentPage;
   const last = (tab.info?.pageCount ?? 1) - 1;
   return Math.max(0, Math.min(last, Math.round(page)));
 }
@@ -131,7 +132,7 @@ export function createAppStore(init: Partial<Settings> = {}) {
       addTab(source) {
         const existing = get().tabs.find((t) => t.key === source.key);
         if (existing) {
-          set({ activeId: existing.id });
+          get().activate(existing.id);
           return { id: existing.id, existed: true };
         }
         const tab: DocTab = {
@@ -178,7 +179,11 @@ export function createAppStore(init: Partial<Settings> = {}) {
         set({ tabs: rest, activeId: nextActive });
       },
 
-      activate: (id) => set({ activeId: id }),
+      activate(id) {
+        set({ activeId: id });
+        // The viewer remounts on tab switch; ask it to return to where the reader was.
+        update(id, (t) => scrollTo(t, t.currentPage));
+      },
       zoomBy: (id, direction) => update(id, (t) => ({ zoom: stepZoom(t.zoom, direction), fit: null })),
       setZoom: (id, zoom) => update(id, () => ({ zoom: clampZoom(zoom), fit: null })),
       applyFitZoom: (id, zoom) => update(id, () => ({ zoom: clampZoom(zoom) })),
