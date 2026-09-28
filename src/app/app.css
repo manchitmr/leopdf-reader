@@ -145,3 +145,21 @@ button, input, select { font: inherit; color: inherit; }
   #print-root { display: block; }
   #print-root img { display: block; width: 100%; break-after: page; }
 }
+
+.editbar { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--accent-soft); border-bottom: 1px solid var(--border); }
+.editbar select, .size-input { height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); padding: 0 6px; }
+.size-input { width: 56px; }
+.editbar input[type="color"] { width: 32px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 0; background: none; }
+.modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.35); z-index: 20; }
+.modal-backdrop h2 { margin-top: 0; font-size: 17px; }
+.toast.notice { bottom: 64px; }
+
+.edit-layer { position: absolute; inset: 0; }
+.edit-layer.tool-text { cursor: text; }
+.edit-frame { position: absolute; border: 1px dashed rgba(194, 65, 12, 0.6); cursor: move; }
+.edit-frame.existing { border-color: rgba(37, 99, 235, 0.6); }
+.edit-frame.selected { border: 2px solid var(--accent); }
+.edit-handle { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; background: var(--accent); border-radius: 2px; cursor: nwse-resize; }
+.frame-action { position: absolute; top: -30px; left: 0; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; white-space: nowrap; }
+.inline-editor { position: absolute; min-width: 120px; padding: 0 2px; border: 1px solid var(--accent); background: rgba(255, 255, 255, 0.9); resize: none; overflow: hidden; outline: none; white-space: pre; z-index: 4; }
+.dirty-dot { color: var(--accent); font-weight: 700; }

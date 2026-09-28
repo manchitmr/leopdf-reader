@@ -30,7 +30,7 @@ export function Thumbnail({ tab, page }: { tab: DocTab; page: number }) {
   return (
     <button ref={ref} className={`thumb ${active ? "active" : ""}`} onClick={() => appStore.getState().goToPage(tab.id, page)}>
       <div className="thumb-page" style={{ width: t.width, height: t.height }}>
-        {visible && <PageCanvas docId={tab.id} page={page} bounds={bounds} zoom={zoom} rotation={tab.rotation} width={t.width} height={t.height} />}
+        {visible && <PageCanvas docId={tab.id} page={page} bounds={bounds} zoom={zoom} rotation={tab.rotation} width={t.width} height={t.height} revision={tab.revision} />}
       </div>
       <span>{tab.info!.pages[page].label}</span>
     </button>

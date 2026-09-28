@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import { getEngine } from "../engine/client";
 import type { Point } from "../engine/types";
 import { appStore, useApp, type DocTab } from "../state/store";
+import { EditLayer } from "./EditLayer";
 import { pageTransform } from "./geometry";
 import type { Slot } from "./layout";
 import { PageCanvas } from "./PageCanvas";
@@ -10,6 +11,7 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
   const bounds = tab.info!.pages[slot.page].bounds;
   const transform = useMemo(() => pageTransform(bounds, tab.zoom, tab.rotation), [bounds, tab.zoom, tab.rotation]);
   const tool = useApp((s) => s.tool);
+  const editMode = useApp((s) => s.editMode);
   const start = useRef<Point | null>(null);
   const pending = useRef(false);
 
@@ -46,11 +48,11 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
       className="page-slot"
       data-page={slot.page}
       style={{ left: slot.x, top: slot.y, width: slot.width, height: slot.height }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
+      onPointerDown={editMode ? undefined : onPointerDown}
+      onPointerMove={editMode ? undefined : onPointerMove}
+      onPointerUp={editMode ? undefined : onPointerUp}
     >
-      <PageCanvas docId={tab.id} page={slot.page} bounds={bounds} zoom={tab.zoom} rotation={tab.rotation} width={transform.width} height={transform.height} />
+      <PageCanvas docId={tab.id} page={slot.page} bounds={bounds} zoom={tab.zoom} rotation={tab.rotation} width={transform.width} height={transform.height} revision={tab.revision} />
       <div className="page-overlay">
         {pageHits.flatMap((hit, i) =>
           hit.rects.map((r, j) => {
@@ -63,6 +65,7 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
           return <div key={`s${i}`} className="selection" style={{ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }} />;
         })}
       </div>
+      {editMode && <EditLayer tab={tab} page={slot.page} transform={transform} zoom={tab.zoom} />}
     </div>
   );
 }

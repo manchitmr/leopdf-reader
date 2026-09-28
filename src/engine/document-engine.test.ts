@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import * as mupdf from "mupdf";
 import { beforeEach, expect, test } from "vitest";
+import { nodeFontSource } from "../edit/node-font-source";
 import { DocumentEngine } from "./document-engine";
 
 const fixture = new Uint8Array(readFileSync(new URL("../../tests/fixtures/sample-si-ta.pdf", import.meta.url)));
@@ -96,4 +97,30 @@ test("search can be limited to a page range", () => {
   expect(engine.search("a", "chapter", 0, 1).map((h) => h.page)).toEqual([0]);
   expect(engine.search("a", "chapter", 1, 2).map((h) => h.page)).toEqual([1]);
   expect(engine.search("a", "chapter", 1, 99).map((h) => h.page)).toEqual([1]);
+});
+
+test("documents report whether they can be edited and whether they are signed", () => {
+  const r = engine.open("a", fixture);
+  expect(r.status === "ok" && r.info.editable).toBe(true);
+  expect(r.status === "ok" && r.info.signed).toBe(false);
+});
+
+test("edits go through the engine and invalidate cached text", async () => {
+  const e = new DocumentEngine({ fontSource: nodeFontSource });
+  e.open("a", fixture);
+  expect(e.search("a", "යාපනය")).toEqual([]);
+  const r = await e.addText("a", 0, [72, 400], "Jaffna යාපනය", { family: "sans", bold: false, size: 14, color: [0, 0, 0] });
+  expect(r.history.dirty).toBe(true);
+  expect(e.search("a", "යාපනය")).toHaveLength(1);
+  expect(e.listObjects("a", 0)).toHaveLength(1);
+  await e.undo("a");
+  expect(e.search("a", "යාපනය")).toEqual([]);
+  const saved = e.save("a");
+  expect(saved.length).toBeGreaterThan(1000);
+  expect(e.markSaved("a").dirty).toBe(false);
+});
+
+test("history of a document never edited is clean", () => {
+  engine.open("a", fixture);
+  expect(engine.history("a")).toEqual({ canUndo: false, canRedo: false, dirty: false });
 });

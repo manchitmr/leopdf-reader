@@ -8,6 +8,8 @@ const info = (pageCount: number): DocInfo => ({
   outline: [],
   title: null,
   repaired: false,
+  editable: true,
+  signed: false,
 });
 const src = (key: string) => ({ key, name: `${key}.pdf`, path: `/${key}.pdf` });
 
@@ -135,4 +137,36 @@ test("switching back to a tab asks the viewer to restore its page", () => {
   store.getState().activate(other);
   store.getState().activate(id);
   expect(tab().scrollRequest?.page).toBe(40);
+});
+
+test("edit history updates flags, bumps the revision and clears search", () => {
+  const { store, id, tab } = storeWithDoc(3);
+  store.getState().setSearchResults(id, "", []);
+  store.getState().startSearch(id, "x");
+  store.getState().applyHistory(id, { canUndo: true, canRedo: false, dirty: true });
+  expect(tab()).toMatchObject({ dirty: true, canUndo: true, canRedo: false, revision: 1 });
+  expect(tab().search.query).toBe("");
+});
+
+test("markSaved clears dirty and adopts a new path", () => {
+  const { store, id, tab } = storeWithDoc(3);
+  store.getState().applyHistory(id, { canUndo: true, canRedo: false, dirty: true });
+  store.getState().markSaved(id, "/docs/යාපනය.pdf", { canUndo: true, canRedo: false, dirty: false });
+  expect(tab()).toMatchObject({ dirty: false, path: "/docs/යාපනය.pdf", key: "/docs/යාපනය.pdf", name: "යාපනය.pdf" });
+  expect(store.getState().recent[0].path).toBe("/docs/යාපනය.pdf");
+});
+
+test("text style merges partial updates", () => {
+  const { store } = storeWithDoc();
+  store.getState().setTextStyle({ bold: true, size: 18 });
+  expect(store.getState().textStyle).toEqual({ family: "sans", bold: true, size: 18, color: [0, 0, 0] });
+});
+
+test("leaving edit mode closes the inline editor and clears selection", () => {
+  const { store, id } = storeWithDoc();
+  store.getState().setEditMode(true);
+  store.getState().select({ tabId: id, page: 0, id: "t1", rect: [0, 0, 1, 1] });
+  store.getState().openInlineEditor({ tabId: id, page: 0, origin: [1, 1], objectId: null, text: "", style: store.getState().textStyle });
+  store.getState().setEditMode(false);
+  expect(store.getState()).toMatchObject({ editMode: false, selected: null, inlineEditor: null, editTool: "select" });
 });

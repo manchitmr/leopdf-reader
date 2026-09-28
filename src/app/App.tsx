@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { quitHandler, requestQuit } from "./edit-actions";
+import { EditBar } from "./EditBar";
 import { onEngineCrash } from "../engine/client";
 import { useT } from "../i18n/useT";
 import { onNativeDrop, onOpenFiles } from "../platform/native";
 import { saveRecent } from "../platform/recent";
-import { isPdfName, sourceFromFile, sourceFromPath } from "../platform/sources";
+import { isPdfName, isTauri, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
 import { PageView } from "../viewer/PageView";
 import { copySelection } from "./copy";
@@ -35,6 +38,46 @@ function usePersistedSettings() {
   );
 }
 
+function Notice() {
+  const t = useT();
+  const notice = useApp((s) => s.notice);
+  const clear = useApp((s) => s.clearNotice);
+  useEffect(() => {
+    if (!notice || notice.key === "saving") return;
+    const timer = setTimeout(clear, 2500);
+    return () => clearTimeout(timer);
+  }, [notice, clear]);
+  return notice ? <div className="toast notice">{t(notice.key, notice.vars)}</div> : null;
+}
+
+/** Asks about unsaved changes before the window closes (Tauri) or the page unloads (browser). */
+function useQuitGuard() {
+  useEffect(() => {
+    if (!isTauri()) {
+      const onBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (appStore.getState().tabs.some((t) => t.dirty)) e.preventDefault();
+      };
+      window.addEventListener("beforeunload", onBeforeUnload);
+      return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    }
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
+      const win = getCurrentWindow();
+      quitHandler.quit = () => void win.destroy();
+      void win
+        .onCloseRequested((event) => {
+          if (!requestQuit()) event.preventDefault();
+        })
+        .then((u) => (disposed ? u() : (unlisten = u)));
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+}
+
 export function App() {
   const t = useT();
   const tab = useApp(activeTab);
@@ -44,6 +87,8 @@ export function App() {
   const searchOpen = useApp((s) => s.searchOpen);
   const [engineNotice, setEngineNotice] = useState(false);
   usePersistedSettings();
+  useQuitGuard();
+  const editMode = useApp((s) => s.editMode);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -103,6 +148,7 @@ export function App() {
       }}
     >
       <Toolbar onPrint={onPrint} />
+      {tab?.status === "ready" && editMode && <EditBar tab={tab} />}
       <TabBar />
       <main className="workspace">
         {!tab && <Welcome />}
@@ -123,6 +169,8 @@ export function App() {
       {engineNotice && <div className="toast">{t("errorEngine")}</div>}
       {copied && <div className="toast">{t("copied")}</div>}
       {busy && <div className="busy-overlay">{t(busy)}</div>}
+      <Notice />
+      <ConfirmDialog />
     </div>
   );
 }

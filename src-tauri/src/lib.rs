@@ -1,3 +1,5 @@
+use std::io::Write;
+use std::path::Path;
 use std::sync::Mutex;
 use tauri::ipc::Response;
 use tauri::{Emitter, Manager};
@@ -25,6 +27,57 @@ fn queue_files(app: &tauri::AppHandle, files: Vec<String>) {
     }
     app.state::<PendingFiles>().0.lock().unwrap().extend(files);
     let _ = app.emit("open-files", ());
+}
+
+fn has_extension(path: &str, allowed: &[&str]) -> bool {
+    let lower = path.to_lowercase();
+    allowed.iter().any(|ext| lower.ends_with(ext))
+}
+
+/// Writes `bytes` to `path` atomically: temp file in the same folder, fsync, then rename over the target.
+/// On any error the original file is left untouched and the temp file is removed.
+fn write_pdf_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let shown = path.display().to_string();
+    if !has_extension(&shown, &[".pdf"]) {
+        return Err(format!("{shown}: not a PDF file"));
+    }
+    let tmp = path.with_extension("pdf.leopdf-tmp");
+    let result = (|| -> std::io::Result<()> {
+        let mut file = std::fs::File::create(&tmp)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        std::fs::rename(&tmp, path)
+    })();
+    if let Err(e) = result {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("{shown}: {e}"));
+    }
+    Ok(())
+}
+
+/// Saves a PDF. The body is the raw file bytes; the target path comes percent-encoded in `x-path`.
+#[tauri::command]
+fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let encoded = request
+        .headers()
+        .get("x-path")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("missing x-path header")?;
+    let path = percent_encoding::percent_decode_str(encoded)
+        .decode_utf8()
+        .map_err(|e| e.to_string())?;
+    write_pdf_atomic(Path::new(path.as_ref()), bytes)
+}
+
+#[tauri::command]
+fn read_image(path: String) -> Result<Response, String> {
+    if !has_extension(&path, &[".png", ".jpg", ".jpeg"]) {
+        return Err(format!("{path}: not a PNG or JPEG image"));
+    }
+    std::fs::read(&path).map(Response::new).map_err(|e| format!("{path}: {e}"))
 }
 
 #[tauri::command]
@@ -57,7 +110,7 @@ pub fn run() {
             queue_files(app.handle(), pdf_args(std::env::args()));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files])
+        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files, write_file, read_image])
         .build(tauri::generate_context!())
         .expect("error while building LeoPDF Reader");
 
@@ -94,6 +147,37 @@ mod tests {
     #[test]
     fn refuses_non_pdf_paths() {
         assert!(read_pdf_bytes("/etc/passwd").unwrap_err().contains("not a PDF"));
+    }
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("leopdf-test-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn atomic_write_creates_and_replaces() {
+        let dir = temp_dir("write");
+        let file = dir.join("out.pdf");
+        write_pdf_atomic(&file, b"one").unwrap();
+        write_pdf_atomic(&file, b"two").unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"two");
+        assert!(!dir.join("out.pdf.leopdf-tmp").exists());
+    }
+
+    #[test]
+    fn failed_write_leaves_original_and_no_temp() {
+        let dir = temp_dir("fail");
+        let missing = dir.join("no-such-folder").join("out.pdf");
+        assert!(write_pdf_atomic(&missing, b"x").is_err());
+        assert!(!dir.join("no-such-folder").exists());
+    }
+
+    #[test]
+    fn write_refuses_non_pdf() {
+        let dir = temp_dir("ext");
+        assert!(write_pdf_atomic(&dir.join("notes.txt"), b"x").unwrap_err().contains("not a PDF"));
     }
 
     #[test]

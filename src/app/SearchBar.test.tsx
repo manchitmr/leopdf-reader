@@ -10,7 +10,7 @@ beforeEach(() => {
   id = appStore.getState().addTab({ key: "/a.pdf", name: "a.pdf", path: "/a.pdf" }).id;
   appStore.getState().setOpenResult(id, {
     status: "ok",
-    info: { pageCount: 3, pages: Array(3).fill({ bounds: [0, 0, 100, 100], label: "1" }), outline: [], title: null, repaired: false },
+    info: { pageCount: 3, pages: Array(3).fill({ bounds: [0, 0, 100, 100], label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false },
   });
 });
 afterEach(cleanup);

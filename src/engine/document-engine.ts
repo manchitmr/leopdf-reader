@@ -1,4 +1,7 @@
 import * as mupdf from "mupdf";
+import { DocumentEditor } from "../edit/editor";
+import { FontRegistry, type FontSource } from "../edit/font-registry";
+import type { EditResult, ExistingImage, HistoryState, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, OutlineNode, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
 
@@ -37,10 +40,28 @@ interface OpenDoc {
   repaired: boolean;
   stext: Map<number, mupdf.StructuredText>;
   prepared: Map<number, PreparedPage>;
+  /** Created on the first edit (turning on MuPDF's undo journal only for documents being edited). */
+  editor: DocumentEditor | null;
 }
+
+function isSigned(doc: mupdf.Document): boolean {
+  const pdf = doc.asPDF();
+  if (!pdf) return false;
+  const flags = pdf.getTrailer().get("Root", "AcroForm", "SigFlags");
+  return flags.isNumber() && (flags.asNumber() & 1) === 1;
+}
+
+const noFonts: FontSource = async () => {
+  throw new Error("No font source configured");
+};
 
 export class DocumentEngine {
   private docs = new Map<string, OpenDoc>();
+  private readonly fonts: FontRegistry;
+
+  constructor(options: { fontSource?: FontSource } = {}) {
+    this.fonts = new FontRegistry(options.fontSource ?? noFonts);
+  }
 
   open(docId: string, bytes: Uint8Array): OpenResult {
     let opened: { value: mupdf.Document; log: string[] };
@@ -50,7 +71,7 @@ export class DocumentEngine {
       return { status: "error", reason: "corrupt" };
     }
     const repaired = opened.log.some((m) => m.includes("repair"));
-    this.docs.set(docId, { doc: opened.value, repaired, stext: new Map(), prepared: new Map() });
+    this.docs.set(docId, { doc: opened.value, repaired, stext: new Map(), prepared: new Map(), editor: null });
     if (opened.value.needsPassword()) return { status: "needs-password" };
     return this.describe(docId);
   }
@@ -121,6 +142,62 @@ export class DocumentEngine {
     this.docs.delete(docId);
   }
 
+  // ---- editing (E1) ----
+
+  addText = (docId: string, page: number, origin: Point, text: string, style: TextStyle) => this.edit(docId, (e) => e.addText(page, origin, text, style));
+  updateText = (docId: string, page: number, id: string, text: string, style: TextStyle) => this.edit(docId, (e) => e.updateText(page, id, text, style));
+  moveObject = (docId: string, page: number, id: string, dx: number, dy: number) => this.edit(docId, (e) => e.moveObject(page, id, dx, dy));
+  resizeObject = (docId: string, page: number, id: string, rect: Rect) => this.edit(docId, (e) => e.resizeObject(page, id, rect));
+  deleteObject = (docId: string, page: number, id: string) => this.edit(docId, (e) => e.deleteObject(page, id));
+  addImage = (docId: string, page: number, bytes: Uint8Array, rect: Rect | null) => this.edit(docId, (e) => e.addImage(page, bytes, rect));
+  replaceImage = (docId: string, page: number, target: { id: string } | { rect: Rect }, bytes: Uint8Array) =>
+    this.edit(docId, (e) => e.replaceImage(page, target, bytes));
+  deleteImage = (docId: string, page: number, rect: Rect) => this.edit(docId, (e) => e.deleteImage(page, rect));
+  moveExistingImage = (docId: string, page: number, rect: Rect, dx: number, dy: number) =>
+    this.edit(docId, (e) => e.moveExistingImage(page, rect, dx, dy));
+  undo = (docId: string) => this.edit(docId, (e) => e.undo());
+  redo = (docId: string) => this.edit(docId, (e) => e.redo());
+
+  listObjects(docId: string, page: number): PageObject[] {
+    return this.editor(docId).listObjects(page);
+  }
+
+  listImages(docId: string, page: number): ExistingImage[] {
+    return this.editor(docId).listImages(page);
+  }
+
+  history(docId: string): HistoryState {
+    return this.get(docId).editor?.history() ?? { canUndo: false, canRedo: false, dirty: false };
+  }
+
+  save(docId: string): Uint8Array {
+    return this.editor(docId).save();
+  }
+
+  markSaved(docId: string): HistoryState {
+    return this.editor(docId).markSaved();
+  }
+
+  private editor(docId: string): DocumentEditor {
+    const entry = this.get(docId);
+    if (!entry.editor) {
+      const pdf = entry.doc.asPDF();
+      if (!pdf) throw new Error("This document cannot be edited");
+      entry.editor = new DocumentEditor(pdf, this.fonts);
+    }
+    return entry.editor;
+  }
+
+  private async edit(docId: string, fn: (editor: DocumentEditor) => Promise<EditResult> | EditResult): Promise<EditResult> {
+    const result = await fn(this.editor(docId));
+    // Page content changed: cached text layers and search data are stale.
+    const entry = this.get(docId);
+    entry.stext.forEach((st) => st.destroy());
+    entry.stext.clear();
+    entry.prepared.clear();
+    return result;
+  }
+
   private describe(docId: string): OpenResult {
     const { doc, repaired } = this.get(docId);
     try {
@@ -140,6 +217,8 @@ export class DocumentEngine {
           outline: convertOutline(doc.loadOutline() ?? []),
           title: doc.getMetaData(mupdf.Document.META_INFO_TITLE) || null,
           repaired,
+          editable: doc.isPDF() && doc.hasPermission("edit"),
+          signed: isSigned(doc),
         },
       };
     } catch {

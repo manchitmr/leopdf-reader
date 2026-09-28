@@ -20,6 +20,10 @@ export interface DocInfo {
   outline: OutlineNode[];
   title: string | null;
   repaired: boolean;
+  /** False for non-PDF documents and PDFs whose permissions forbid editing. */
+  editable: boolean;
+  /** The PDF contains digital signatures (editing invalidates them). */
+  signed: boolean;
 }
 
 export type OpenResult =

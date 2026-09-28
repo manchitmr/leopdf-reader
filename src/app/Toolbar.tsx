@@ -1,11 +1,12 @@
 import {
-  ChevronLeft, ChevronRight, FolderOpen, Hand, Monitor, Moon, Printer, RotateCw, Search, Sun, TextCursor, ZoomIn, ZoomOut,
+  ChevronLeft, ChevronRight, FolderOpen, Hand, Monitor, Moon, PenLine, Printer, RotateCw, Search, Sun, TextCursor, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { LANGUAGES, type Lang } from "../i18n/strings";
 import { useT } from "../i18n/useT";
 import { pickPdfs } from "../platform/sources";
 import { activeTab, useApp, type Theme, type ViewMode } from "../state/store";
+import { enterEditMode } from "./edit-actions";
 import { openSource } from "./open-document";
 
 function IconButton(props: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: ReactNode }) {
@@ -122,6 +123,15 @@ export function Toolbar({ onPrint }: { onPrint: () => void }) {
       </IconButton>
       <IconButton label={t("toolHand")} pressed={s.tool === "hand"} onClick={() => s.setTool("hand")}>
         <Hand size={18} />
+      </IconButton>
+      <div className="separator" />
+      <IconButton
+        label={tab?.info && !tab.info.editable ? t("editNotAllowed") : t("editPdf")}
+        pressed={s.editMode}
+        disabled={!ready}
+        onClick={() => (s.editMode ? s.setEditMode(false) : void enterEditMode())}
+      >
+        <PenLine size={18} />
       </IconButton>
 
       <div className="spacer" />
