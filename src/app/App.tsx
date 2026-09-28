@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { onEngineCrash } from "../engine/client";
 import { useT } from "../i18n/useT";
-import { onNativeDrop } from "../platform/native";
+import { onNativeDrop, onOpenFiles } from "../platform/native";
 import { saveRecent } from "../platform/recent";
 import { isPdfName, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
@@ -50,9 +50,16 @@ export function App() {
   }, [lang, theme]);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void onNativeDrop((paths) => paths.filter(isPdfName).forEach((p) => void openSource(sourceFromPath(p)))).then((u) => (unlisten = u));
-    return () => unlisten?.();
+    const open = (paths: string[]) => paths.filter(isPdfName).forEach((p) => void openSource(sourceFromPath(p)));
+    const cleanups: Array<() => void> = [];
+    let disposed = false;
+    const keep = (unlisten: () => void) => (disposed ? unlisten() : cleanups.push(unlisten));
+    void onNativeDrop(open).then(keep);
+    void onOpenFiles(open).then(keep);
+    return () => {
+      disposed = true;
+      cleanups.forEach((u) => u());
+    };
   }, []);
 
   useEffect(
