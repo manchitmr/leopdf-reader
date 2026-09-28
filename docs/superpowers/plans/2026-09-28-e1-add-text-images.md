@@ -507,7 +507,7 @@ test("width scales with font size", async () => {
 
 test("characters no bundled font has are reported as missing", async () => {
   const fonts = await loadStyleFonts(registry, style);
-  expect(shapeLine("කොළඹ क", style, fonts).missing).toEqual(["क"]);
+  expect(shapeLine("කොළඹ 中", style, fonts).missing).toEqual(["中"]);
 });
 
 test("shapeText splits lines on newlines", async () => {
@@ -1700,8 +1700,8 @@ test("images: add with default rect, replace by id, delete", async () => {
 });
 
 test("missing characters are reported", async () => {
-  const r = await editor.addText(0, [72, 400], "කොළඹ क", style);
-  expect(r.missing).toEqual(["क"]);
+  const r = await editor.addText(0, [72, 400], "කොළඹ 中", style);
+  expect(r.missing).toEqual(["中"]);
 });
 
 test("a failing edit is rolled back and leaves history unchanged", async () => {
