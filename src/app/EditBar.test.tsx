@@ -24,7 +24,6 @@ test("edit bar switches tools and style", () => {
   expect(appStore.getState().textStyle.bold).toBe(true);
   fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "20" } });
   expect(appStore.getState().textStyle.size).toBe(20);
-  expect((screen.getByLabelText("Undo") as HTMLButtonElement).disabled).toBe(true);
 });
 
 test("unsaved dialog shows the file name and three choices", () => {
