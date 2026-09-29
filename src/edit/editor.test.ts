@@ -116,3 +116,14 @@ test("comment text and colour changes are single undo steps", async () => {
   editor.undo();
   expect(editor.listAnnotations(0)[0].contents).toBe("");
 });
+
+test("bookmark edits share the journal", async () => {
+  const r = await editor.addBookmark(1, "යාපනය");
+  expect(r).toMatchObject({ id: "2", history: { canUndo: true, dirty: true } });
+  await editor.renameBookmark([2], "ගාල්ල");
+  await editor.deleteBookmark([0]);
+  expect(editor.outline().map((n) => n.title)).toEqual(["Chapter Two", "ගාල්ල"]);
+  editor.undo();
+  editor.undo();
+  expect(editor.outline().map((n) => n.title)).toEqual(["Chapter One", "Chapter Two", "යාපනය"]);
+});

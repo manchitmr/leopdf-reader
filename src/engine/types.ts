@@ -11,6 +11,8 @@ export interface PageInfo {
 export interface OutlineNode {
   title: string;
   page: number | null;
+  /** Position in the outline (indexes from the top level), used to rename or delete it. */
+  path: number[];
   children: OutlineNode[];
 }
 

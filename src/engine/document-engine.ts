@@ -2,14 +2,14 @@ import * as mupdf from "mupdf";
 import { DocumentEditor } from "../edit/editor";
 import { FontRegistry, type FontSource } from "../edit/font-registry";
 import { listAnnotations } from "../edit/annotations";
+import { listOutline } from "../edit/bookmarks";
 import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
-import type { OpenResult, OutlineNode, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
+import type { OpenResult, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
 
 const MAX_HITS = 1000;
 const STEXT_CACHE = 4;
 
-type MuOutline = NonNullable<ReturnType<mupdf.Document["loadOutline"]>>[number];
 
 let logSink: string[] | null = null;
 mupdf.setLog({
@@ -26,14 +26,6 @@ function withLog<T>(fn: () => T): { value: T; log: string[] } {
   } finally {
     logSink = null;
   }
-}
-
-function convertOutline(items: MuOutline[]): OutlineNode[] {
-  return items.map((item) => ({
-    title: item.title ?? "",
-    page: typeof item.page === "number" && item.page >= 0 ? item.page : null,
-    children: convertOutline(item.down ?? []),
-  }));
 }
 
 interface OpenDoc {
@@ -177,6 +169,15 @@ export class DocumentEngine {
     });
   }
 
+  addBookmark = (docId: string, page: number, title: string) => this.edit(docId, (e) => e.addBookmark(page, title));
+  renameBookmark = (docId: string, path: number[], title: string) => this.edit(docId, (e) => e.renameBookmark(path, title));
+  deleteBookmark = (docId: string, path: number[]) => this.edit(docId, (e) => e.deleteBookmark(path));
+
+  /** Current bookmarks (reflects edits and undo). */
+  outline(docId: string) {
+    return listOutline(this.get(docId).doc);
+  }
+
   undo = (docId: string) => this.edit(docId, (e) => e.undo());
   redo = (docId: string) => this.edit(docId, (e) => e.redo());
 
@@ -236,7 +237,7 @@ export class DocumentEngine {
         info: {
           pageCount,
           pages,
-          outline: convertOutline(doc.loadOutline() ?? []),
+          outline: listOutline(doc),
           title: doc.getMetaData(mupdf.Document.META_INFO_TITLE) || null,
           repaired,
           editable: doc.isPDF() && doc.hasPermission("edit"),

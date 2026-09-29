@@ -62,7 +62,7 @@ export interface SelectedAnnot {
 export type DialogState =
   | { kind: "unsaved"; tabIds: string[]; action: "close" | "quit" }
   /** Signed-PDF warning; `then` is what to do after "Continue". */
-  | { kind: "signed"; tabId: string; then: { edit: EditTool } | { tool: Tool } }
+  | { kind: "signed"; tabId: string; then: { edit: EditTool } | { tool: Tool } | { bookmark: true } }
   | { kind: "author"; then: Tool }
   | { kind: "signature" };
 

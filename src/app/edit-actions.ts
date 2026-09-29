@@ -4,8 +4,10 @@ import type { EditResult } from "../edit/types";
 import { downloadPdf, pickImage, pickSavePath, writePdf } from "../platform/files";
 import { isTauri } from "../platform/sources";
 import { activeTab, appStore, getTab, type AppStore, type EditTool } from "../state/store";
+// annot-actions and bookmark-actions import this module too; only functions cross, so the cycles are safe.
 import { chooseTool } from "./annot-actions";
-import { flushComment, hasPendingComment } from "./comment-draft"; // functions only — the import cycle is safe
+import { addBookmarkHere } from "./bookmark-actions";
+import { flushComment, hasPendingComment } from "./comment-draft";
 import { closeDocument } from "./open-document";
 
 type Async<T> = T extends (...a: infer A) => infer R ? (...a: A) => Promise<Awaited<R>> : never;
@@ -147,6 +149,7 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
   if (dialog.kind === "signed") {
     s.acknowledgeSigned(dialog.tabId);
     if ("tool" in dialog.then) await chooseTool(dialog.then.tool, deps);
+    else if ("bookmark" in dialog.then) await addBookmarkHere(dialog.tabId, deps);
     else {
       s.setEditMode(true);
       s.setEditTool(dialog.then.edit);

@@ -123,6 +123,9 @@ export const en = {
   deleteSignature: "Delete signature",
   signatureDropped: "The oldest signature was removed (up to 5 are kept).",
   imageUnreadable: "Couldn't read that image.",
+  addBookmark: "Add bookmark",
+  renameBookmark: "Rename bookmark",
+  deleteBookmark: "Delete bookmark",
 };
 
 export type StringKey = keyof typeof en;
@@ -252,6 +255,9 @@ export const si: Record<StringKey, string> = {
   deleteSignature: "අත්සන මකන්න",
   signatureDropped: "පැරණිම අත්සන ඉවත් කරන ලදී (උපරිම 5ක් තබා ගනී).",
   imageUnreadable: "එම රූපය කියවිය නොහැකි විය.",
+  addBookmark: "පිටු සලකුණක් එක් කරන්න",
+  renameBookmark: "පිටු සලකුණ නැවත නම් කරන්න",
+  deleteBookmark: "පිටු සලකුණ මකන්න",
 };
 
 export const ta: Record<StringKey, string> = {
@@ -379,6 +385,9 @@ export const ta: Record<StringKey, string> = {
   deleteSignature: "கையொப்பத்தை நீக்கு",
   signatureDropped: "பழைய கையொப்பம் நீக்கப்பட்டது (அதிகபட்சம் 5 வைக்கப்படும்).",
   imageUnreadable: "அந்தப் படத்தைப் படிக்க முடியவில்லை.",
+  addBookmark: "புத்தகக்குறியைச் சேர்",
+  renameBookmark: "புத்தகக்குறியின் பெயரை மாற்று",
+  deleteBookmark: "புத்தகக்குறியை நீக்கு",
 };
 
 export type Lang = "en" | "si" | "ta";
