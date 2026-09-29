@@ -1,6 +1,6 @@
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
-import type { HistoryState, RGB, TextStyle } from "../edit/types";
+import type { EditableLine, HistoryState, RGB, TextStyle } from "../edit/types";
 import type { DocInfo, OpenResult, Point, Rect, Rotation, SearchHit } from "../engine/types";
 import { detectLang, type Lang, type StringKey } from "../i18n/strings";
 import { loadAuthor, loadSignatures, withSignature, type SavedSignature } from "../platform/prefs";
@@ -30,6 +30,8 @@ export interface InlineEditorState {
   origin: Point;
   /** Existing LeoPDF text object being edited, or null for new text. */
   objectId: string | null;
+  /** Original PDF line being replaced (E2). */
+  line?: EditableLine;
   text: string;
   style: TextStyle;
 }

@@ -23,6 +23,8 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
   const [x, y] = transform.toDisplay(state.origin);
   const fontSize = style.size * zoom;
   const lines = Math.max(1, state.text.split("\n").length);
+  // Replacing an original line: cover all of it (plus room for the Noto font being a little wider).
+  const cover = state.line ? transform.rectToDisplay(state.line.rect) : null;
 
   useEffect(() => ref.current?.focus(), []);
 
@@ -35,6 +37,7 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
       spellCheck={false}
       style={{
         left: x,
+        ...(cover ? { minWidth: (cover[2] - cover[0]) * 1.15 + 8 } : {}),
         top: y - fontSize * 1.05,
         fontSize,
         lineHeight: 1.4,

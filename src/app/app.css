@@ -159,6 +159,10 @@ button, input, select { font: inherit; color: inherit; }
 .edit-frame { position: absolute; border: 1px dashed rgba(194, 65, 12, 0.6); cursor: move; }
 .edit-frame.existing { border-color: rgba(37, 99, 235, 0.6); }
 .edit-frame.selected { border: 2px solid var(--accent); }
+.edit-line { position: absolute; cursor: text; border: 1px solid transparent; }
+.edit-line:hover { border-color: rgba(37, 99, 235, 0.5); background: rgba(37, 99, 235, 0.06); }
+.edit-line.locked { cursor: not-allowed; }
+.edit-line.locked:hover { border-color: rgba(107, 114, 128, 0.6); background: rgba(107, 114, 128, 0.08); }
 .edit-handle { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; background: var(--accent); border-radius: 2px; cursor: nwse-resize; }
 .frame-action { position: absolute; top: -30px; left: 0; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; white-space: nowrap; }
 .inline-editor { position: absolute; min-width: 120px; padding: 0 2px; border: 1px solid var(--accent); background: rgba(255, 255, 255, 0.9); resize: none; overflow: hidden; outline: none; white-space: pre; z-index: 4; }

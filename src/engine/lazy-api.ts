@@ -3,7 +3,7 @@ import type { EngineApi } from "./engine-api";
 const METHODS = [
   "open", "unlock", "render", "renderPng", "search", "select", "close",
   "addText", "updateText", "moveObject", "resizeObject", "deleteObject", "addImage", "replaceImage", "deleteImage",
-  "moveExistingImage", "listObjects", "listImages", "undo", "redo", "history", "save", "markSaved",
+  "moveExistingImage", "listObjects", "listImages", "listLines", "replaceLine", "undo", "redo", "history", "save", "markSaved",
   "addAnnotation", "updateAnnotation", "moveAnnotation", "resizeAnnotation", "deleteAnnotation", "listAnnotations",
   "addBookmark", "renameBookmark", "deleteBookmark", "outline",
 ] as const satisfies readonly (keyof EngineApi)[];

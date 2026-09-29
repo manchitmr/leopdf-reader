@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getEngine } from "../engine/client";
 import type { Point, Rect } from "../engine/types";
-import type { ExistingImage, PageObject } from "../edit/types";
+import type { EditableLine, ExistingImage, PageObject } from "../edit/types";
 import { commitInlineEditor, replaceSelectedImage, runEdit } from "../app/edit-actions";
 import { useT } from "../i18n/useT";
 import { appStore, useApp, type DocTab } from "../state/store";
@@ -23,6 +23,7 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
   const selected = useApp((s) => s.selected);
   const editor = useApp((s) => s.inlineEditor);
   const [frames, setFrames] = useState<Frame[]>([]);
+  const [lines, setLines] = useState<EditableLine[]>([]);
   const [drag, setDrag] = useState<Drag>(null);
   const layer = useRef<HTMLDivElement>(null);
 
@@ -39,6 +40,27 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
       cancelled = true;
     };
   }, [tab.id, page, tab.revision]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (tool === "select") void getEngine().listLines(tab.id, page).then((l: EditableLine[]) => !cancelled && setLines(l));
+    else setLines([]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tab.id, page, tab.revision, tool]);
+
+  const onLineDown = (line: EditableLine) => (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    const s = appStore.getState();
+    if (s.inlineEditor) {
+      void commitInlineEditor();
+      return;
+    }
+    if (line.locked) s.showNotice(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode");
+    else s.openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line, text: line.text, style: line.style });
+  };
 
   const pagePoint = (e: React.PointerEvent): Point => {
     const box = layer.current!.getBoundingClientRect();
@@ -99,6 +121,19 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
 
   return (
     <div ref={layer} className={`edit-layer tool-${tool}`} onPointerDown={onLayerDown} onPointerMove={onMove} onPointerUp={onUp}>
+      {lines.map((line, i) => {
+        if (editor?.line === line) return null;
+        const [x0, y0, x1, y1] = transform.rectToDisplay(line.rect);
+        return (
+          <div
+            key={`line-${i}`}
+            className={`edit-line ${line.locked ? "locked" : ""}`}
+            style={{ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }}
+            title={line.locked ? t(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode") : t("editLine")}
+            onPointerDown={onLineDown(line)}
+          />
+        );
+      })}
       {frames.map((frame, i) => {
         const moving = drag?.frame === frame ? drag : null;
         const d = moving?.mode === "move" ? moving.delta : [0, 0];

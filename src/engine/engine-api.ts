@@ -1,6 +1,6 @@
 import { transfer } from "comlink";
 import { DocumentEngine } from "./document-engine";
-import type { AnnotPatch, NewAnnot, TextStyle } from "../edit/types";
+import type { AnnotPatch, EditableLine, NewAnnot, TextStyle } from "../edit/types";
 import type { Point, Rect, Rotation } from "./types";
 
 export function createEngineApi(engine = new DocumentEngine()) {
@@ -20,6 +20,7 @@ export function createEngineApi(engine = new DocumentEngine()) {
     close: (docId: string) => engine.close(docId),
     addText: (docId: string, page: number, origin: Point, text: string, style: TextStyle) => engine.addText(docId, page, origin, text, style),
     updateText: (docId: string, page: number, id: string, text: string, style: TextStyle) => engine.updateText(docId, page, id, text, style),
+    replaceLine: (docId: string, page: number, line: EditableLine, text: string, style: TextStyle) => engine.replaceLine(docId, page, line, text, style),
     moveObject: (docId: string, page: number, id: string, dx: number, dy: number) => engine.moveObject(docId, page, id, dx, dy),
     resizeObject: (docId: string, page: number, id: string, rect: Rect) => engine.resizeObject(docId, page, id, rect),
     deleteObject: (docId: string, page: number, id: string) => engine.deleteObject(docId, page, id),
@@ -39,6 +40,7 @@ export function createEngineApi(engine = new DocumentEngine()) {
     deleteBookmark: (docId: string, path: number[]) => engine.deleteBookmark(docId, path),
     outline: (docId: string) => engine.outline(docId),
     listObjects: (docId: string, page: number) => engine.listObjects(docId, page),
+    listLines: (docId: string, page: number) => engine.listLines(docId, page),
     listImages: (docId: string, page: number) => engine.listImages(docId, page),
     undo: (docId: string) => engine.undo(docId),
     redo: (docId: string) => engine.redo(docId),
