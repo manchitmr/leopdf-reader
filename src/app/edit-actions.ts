@@ -125,6 +125,7 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
     s.setEditMode(true);
     return;
   }
+  if (dialog.kind !== "unsaved") return;
   if (choice === "save") {
     for (const id of dialog.tabIds) if (!(await saveTab(id, { as: false }, deps))) return;
   }
@@ -141,7 +142,7 @@ export async function enterEditMode(deps: EditDeps = defaultEditDeps()): Promise
     return;
   }
   if (tab.info.signed && !tab.signedAcknowledged) {
-    s.setDialog({ kind: "signed", tabId: tab.id });
+    s.setDialog({ kind: "signed", tabId: tab.id, then: { edit: "select" } });
     return;
   }
   s.setEditMode(true);

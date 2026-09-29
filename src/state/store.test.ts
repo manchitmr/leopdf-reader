@@ -170,3 +170,51 @@ test("leaving edit mode closes the inline editor and clears selection", () => {
   store.getState().setEditMode(false);
   expect(store.getState()).toMatchObject({ editMode: false, selected: null, inlineEditor: null, editTool: "select" });
 });
+
+test("annotation tools leave edit mode; entering edit mode goes back to Select", () => {
+  const { store, id } = storeWithDoc();
+  store.getState().setEditMode(true);
+  store.getState().setTool("hand");
+  expect(store.getState().editMode).toBe(true);
+  store.getState().selectAnnot({ tabId: id, page: 0, id: 12 });
+  store.getState().setTool("draw");
+  expect(store.getState()).toMatchObject({ tool: "draw", editMode: false, selectedAnnot: null });
+  store.getState().setEditMode(true);
+  expect(store.getState()).toMatchObject({ tool: "select", editMode: true });
+});
+
+test("markup colours are remembered per kind; draw style merges", () => {
+  const { store } = storeWithDoc();
+  store.getState().setMarkupStyle({ color: [0, 1, 0] });
+  store.getState().setMarkupStyle({ kind: "underline" });
+  expect(store.getState().markupStyle.colors.highlight).toEqual([0, 1, 0]);
+  expect(store.getState().markupStyle.kind).toBe("underline");
+  store.getState().setDrawStyle({ shape: "arrow", width: 4 });
+  expect(store.getState().drawStyle).toMatchObject({ shape: "arrow", width: 4 });
+});
+
+test("selecting an annotation can ask for the comment box to be focused", () => {
+  const { store, id } = storeWithDoc();
+  store.getState().selectAnnot({ tabId: id, page: 0, id: 7 }, true);
+  expect(store.getState()).toMatchObject({ selectedAnnot: { id: 7 }, focusComment: true });
+  store.getState().selectAnnot(null);
+  expect(store.getState().focusComment).toBe(false);
+});
+
+test("signatures: newest first and chosen; removing the chosen one clears the choice", () => {
+  const { store } = storeWithDoc();
+  const sig = (id: string) => ({ id, png: "data:image/png;base64,AA==", width: 10, height: 4 });
+  expect(store.getState().addSignature(sig("a"))).toBe(false);
+  store.getState().addSignature(sig("b"));
+  expect(store.getState().signatures.map((s) => s.id)).toEqual(["b", "a"]);
+  expect(store.getState().signatureId).toBe("b");
+  store.getState().removeSignature("b");
+  expect(store.getState().signatureId).toBeNull();
+});
+
+test("closing a tab clears its annotation selection", () => {
+  const { store, id } = storeWithDoc();
+  store.getState().selectAnnot({ tabId: id, page: 0, id: 3 });
+  store.getState().closeTab(id);
+  expect(store.getState().selectedAnnot).toBeNull();
+});

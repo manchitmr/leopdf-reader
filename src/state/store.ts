@@ -1,17 +1,17 @@
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
-import type { HistoryState, TextStyle } from "../edit/types";
+import type { HistoryState, RGB, TextStyle } from "../edit/types";
 import type { DocInfo, OpenResult, Point, Rect, Rotation, SearchHit } from "../engine/types";
 import { detectLang, type Lang, type StringKey } from "../i18n/strings";
+import { loadAuthor, loadSignatures, withSignature, type SavedSignature } from "../platform/prefs";
 import { addRecent, loadRecent, removeRecent, type RecentFile } from "../platform/recent";
 import { baseName } from "../platform/sources";
+import { DRAW_COLORS, MARKUP_COLORS } from "./palette";
 import { clampZoom, stepZoom } from "./zoom";
 
 export type ViewMode = "continuous" | "single" | "two";
 export type Fit = "width" | "page" | null;
-export type Tool = "select" | "hand";
 export type Theme = "system" | "light" | "dark";
-export type LeftPanel = "thumbnails" | "bookmarks" | null;
 export type TabStatus = "loading" | "ready" | "locked" | "error";
 export type EditTool = "select" | "text";
 
@@ -34,9 +34,37 @@ export interface InlineEditorState {
   style: TextStyle;
 }
 
+export type Tool = "select" | "hand" | "comment" | "markup" | "draw" | "sign";
+export type LeftPanel = "thumbnails" | "bookmarks" | "comments" | null;
+export type MarkupKind = "highlight" | "underline" | "strikeout";
+export type DrawShape = "pen" | "line" | "arrow" | "rect" | "oval";
+
+export interface MarkupStyle {
+  kind: MarkupKind;
+  /** Remembered per kind (yellow highlight, red underline…). */
+  colors: Record<MarkupKind, RGB>;
+}
+
+export interface DrawStyle {
+  shape: DrawShape;
+  color: RGB;
+  /** Line width in points. */
+  width: number;
+}
+
+/** A selected annotation (Select tool). `id` is the PDF object number. */
+export interface SelectedAnnot {
+  tabId: string;
+  page: number;
+  id: number;
+}
+
 export type DialogState =
   | { kind: "unsaved"; tabIds: string[]; action: "close" | "quit" }
-  | { kind: "signed"; tabId: string };
+  /** Signed-PDF warning; `then` is what to do after "Continue". */
+  | { kind: "signed"; tabId: string; then: { edit: EditTool } | { tool: Tool } }
+  | { kind: "author"; then: Tool }
+  | { kind: "signature" };
 
 export interface SearchState {
   query: string;
@@ -81,6 +109,9 @@ export interface Settings {
   lang: Lang;
   theme: Theme;
   recent: RecentFile[];
+  /** Author for new annotations; null = never asked, "" = skipped. */
+  author: string | null;
+  signatures: SavedSignature[];
 }
 
 export interface AppState extends Settings {
@@ -98,6 +129,12 @@ export interface AppState extends Settings {
   inlineEditor: InlineEditorState | null;
   dialog: DialogState | null;
   notice: { key: StringKey; vars?: Record<string, string | number> } | null;
+  markupStyle: MarkupStyle;
+  drawStyle: DrawStyle;
+  signatureId: string | null;
+  selectedAnnot: SelectedAnnot | null;
+  /** Focus the comment box of the selected annotation (after placing a note). */
+  focusComment: boolean;
 
   addTab(source: { key: string; name: string; path: string | null }): { id: string; existed: boolean };
   setOpenResult(id: string, result: OpenResult): void;
@@ -138,6 +175,14 @@ export interface AppState extends Settings {
   markSaved(id: string, path: string | null, history: HistoryState): void;
   showNotice(key: StringKey, vars?: Record<string, string | number>): void;
   clearNotice(): void;
+  setMarkupStyle(change: { kind?: MarkupKind; color?: RGB }): void;
+  setDrawStyle(partial: Partial<DrawStyle>): void;
+  setSignatureId(id: string | null): void;
+  selectAnnot(selected: SelectedAnnot | null, focus?: boolean): void;
+  setAuthor(name: string): void;
+  /** Adds (newest first) and chooses it; returns true when the oldest was dropped. */
+  addSignature(sig: SavedSignature): boolean;
+  removeSignature(id: string): void;
 }
 
 const EMPTY_SEARCH: SearchState = { query: "", hits: [], active: 0, running: false };
@@ -159,7 +204,14 @@ function defaultSettings(): Settings {
   } catch {
     // No storage (tests, private mode): use defaults.
   }
-  return { lang, theme, recent: typeof localStorage === "undefined" ? [] : loadRecent() };
+  const stored = typeof localStorage !== "undefined";
+  return {
+    lang,
+    theme,
+    recent: stored ? loadRecent() : [],
+    author: stored ? loadAuthor() : null,
+    signatures: stored ? loadSignatures() : [],
+  };
 }
 
 export function createAppStore(init: Partial<Settings> = {}) {
@@ -187,6 +239,11 @@ export function createAppStore(init: Partial<Settings> = {}) {
       inlineEditor: null,
       dialog: null,
       notice: null,
+      markupStyle: { kind: "highlight", colors: { highlight: MARKUP_COLORS[0], underline: MARKUP_COLORS[4], strikeout: MARKUP_COLORS[4] } },
+      drawStyle: { shape: "pen", color: DRAW_COLORS[0], width: 2 },
+      signatureId: null,
+      selectedAnnot: null,
+      focusComment: false,
 
       addTab(source) {
         const existing = get().tabs.find((t) => t.key === source.key);
@@ -240,7 +297,7 @@ export function createAppStore(init: Partial<Settings> = {}) {
         if (index < 0) return;
         const rest = tabs.filter((t) => t.id !== id);
         const nextActive = activeId === id ? ((rest[index] ?? rest[index - 1])?.id ?? null) : activeId;
-        set({ tabs: rest, activeId: nextActive });
+        set((s) => ({ tabs: rest, activeId: nextActive, selectedAnnot: s.selectedAnnot?.tabId === id ? null : s.selectedAnnot }));
       },
 
       activate(id) {
@@ -278,7 +335,6 @@ export function createAppStore(init: Partial<Settings> = {}) {
 
       clearSearch: (id) => update(id, () => ({ search: EMPTY_SEARCH })),
       setSelection: (id, selection) => update(id, () => ({ selection })),
-      setTool: (tool) => set({ tool }),
       setLang: (lang) => set({ lang }),
       setTheme: (theme) => set({ theme }),
       toggleLeftPanel: (panel) => set((s) => ({ leftPanel: s.leftPanel === panel ? null : panel })),
@@ -286,7 +342,31 @@ export function createAppStore(init: Partial<Settings> = {}) {
       pushRecent: (path) => set((s) => ({ recent: addRecent(s.recent, path) })),
       dropRecent: (path) => set((s) => ({ recent: removeRecent(s.recent, path) })),
       setBusy: (busy) => set({ busy }),
-      setEditMode: (editMode) => set(editMode ? { editMode } : { editMode, editTool: "select", selected: null, inlineEditor: null }),
+      setTool: (tool) =>
+        set((s) => ({
+          tool,
+          selectedAnnot: null,
+          focusComment: false,
+          ...(tool !== "hand" && s.editMode ? { editMode: false, editTool: "select" as const, selected: null, inlineEditor: null } : {}),
+        })),
+      setEditMode: (editMode) =>
+        set(editMode ? { editMode, tool: "select", selectedAnnot: null } : { editMode, editTool: "select", selected: null, inlineEditor: null }),
+      setMarkupStyle: ({ kind, color }) =>
+        set((s) => {
+          const k = kind ?? s.markupStyle.kind;
+          return { markupStyle: { kind: k, colors: color ? { ...s.markupStyle.colors, [k]: color } : s.markupStyle.colors } };
+        }),
+      setDrawStyle: (partial) => set((s) => ({ drawStyle: { ...s.drawStyle, ...partial } })),
+      setSignatureId: (signatureId) => set({ signatureId }),
+      selectAnnot: (selectedAnnot, focus = false) => set({ selectedAnnot, focusComment: focus && selectedAnnot !== null }),
+      setAuthor: (author) => set({ author }),
+      addSignature(sig) {
+        const { list, dropped } = withSignature(get().signatures, sig);
+        set({ signatures: list, signatureId: sig.id });
+        return dropped;
+      },
+      removeSignature: (id) =>
+        set((s) => ({ signatures: s.signatures.filter((x) => x.id !== id), signatureId: s.signatureId === id ? null : s.signatureId })),
       setEditTool: (editTool) => set({ editTool, selected: null }),
       setTextStyle: (partial) => set((s) => ({ textStyle: { ...s.textStyle, ...partial } })),
       applyHistory: (id, history) =>

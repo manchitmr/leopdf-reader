@@ -7,6 +7,7 @@ export function ConfirmDialog() {
   const dialog = useApp((s) => s.dialog);
   const tabs = useApp((s) => s.tabs);
   if (!dialog) return null;
+  if (dialog.kind === "author" || dialog.kind === "signature") return null;
   let title = t("unsavedTitle");
   let message: string;
   let primary = t("save");

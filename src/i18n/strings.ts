@@ -75,6 +75,7 @@ export const en = {
   missingGlyphs: "Some characters can't be shown with the bundled fonts: {chars}",
   editFailed: "That edit could not be applied.",
   clickToAddText: "Click on the page to add text",
+  signatureNotSaved: "Couldn't store the signature on this computer; it lasts until you close LeoPDF.",
 };
 
 export type StringKey = keyof typeof en;
@@ -156,6 +157,7 @@ export const si: Record<StringKey, string> = {
   missingGlyphs: "සමහර අක්ෂර ඇතුළත් අකුරු වලින් පෙන්විය නොහැක: {chars}",
   editFailed: "එම සංස්කරණය යෙදිය නොහැකි විය.",
   clickToAddText: "පෙළ එක් කිරීමට පිටුව මත ක්ලික් කරන්න",
+  signatureNotSaved: "අත්සන මෙම පරිගණකයේ ගබඩා කළ නොහැකි විය; LeoPDF වසන තෙක් පමණක් පවතී.",
 };
 
 export const ta: Record<StringKey, string> = {
@@ -235,6 +237,7 @@ export const ta: Record<StringKey, string> = {
   missingGlyphs: "சில எழுத்துகளை உள்ளமைந்த எழுத்துருக்களால் காட்ட முடியாது: {chars}",
   editFailed: "அந்தத் திருத்தத்தைப் பயன்படுத்த முடியவில்லை.",
   clickToAddText: "உரையைச் சேர்க்கப் பக்கத்தில் கிளிக் செய்யவும்",
+  signatureNotSaved: "கையொப்பத்தை இந்தக் கணினியில் சேமிக்க முடியவில்லை; LeoPDF ஐ மூடும் வரை மட்டுமே இருக்கும்.",
 };
 
 export type Lang = "en" | "si" | "ta";

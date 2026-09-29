@@ -125,7 +125,7 @@ test("entering edit mode: disallowed PDFs show a notice; signed PDFs ask once", 
   expect(locked.store.getState()).toMatchObject({ editMode: false, notice: { key: "editNotAllowed" } });
   const signed = setup("/b.pdf", info({ signed: true }));
   await enterEditMode(signed.deps);
-  expect(signed.store.getState().dialog).toEqual({ kind: "signed", tabId: signed.id });
+  expect(signed.store.getState().dialog).toEqual({ kind: "signed", tabId: signed.id, then: { edit: "select" } });
   await resolveDialog("save", signed.deps); // "Continue" maps to the primary choice
   expect(signed.store.getState().editMode).toBe(true);
   expect(signed.tab().signedAcknowledged).toBe(true);

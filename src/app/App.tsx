@@ -5,6 +5,7 @@ import { EditBar } from "./EditBar";
 import { onEngineCrash } from "../engine/client";
 import { useT } from "../i18n/useT";
 import { onNativeDrop, onOpenFiles } from "../platform/native";
+import { saveAuthor, saveSignatures } from "../platform/prefs";
 import { saveRecent } from "../platform/recent";
 import { isPdfName, isTauri, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
@@ -33,6 +34,8 @@ function usePersistedSettings() {
           // Storage unavailable: settings last for this session only.
         }
         if (s.recent !== prev.recent) saveRecent(s.recent);
+        if (s.author !== prev.author && s.author !== null) saveAuthor(s.author);
+        if (s.signatures !== prev.signatures && !saveSignatures(s.signatures)) s.showNotice("signatureNotSaved");
       }),
     [],
   );
