@@ -1,10 +1,11 @@
-import { Bookmark, ChevronDown, ChevronRight, LayoutGrid } from "lucide-react";
+import { Bookmark, ChevronDown, ChevronRight, LayoutGrid, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { OutlineNode } from "../engine/types";
 import { useT } from "../i18n/useT";
 import { appStore, useApp, type DocTab } from "../state/store";
 import { pageTransform } from "../viewer/geometry";
 import { PageCanvas } from "../viewer/PageCanvas";
+import { CommentsPanel } from "./CommentsPanel";
 
 const THUMB_WIDTH = 120;
 
@@ -81,6 +82,9 @@ export function LeftPanel({ tab }: { tab: DocTab }) {
         <button className={`icon-button ${panel === "bookmarks" ? "pressed" : ""}`} aria-label={t("bookmarks")} title={t("bookmarks")} onClick={() => toggle("bookmarks")}>
           <Bookmark size={18} />
         </button>
+        <button className={`icon-button ${panel === "comments" ? "pressed" : ""}`} aria-label={t("comments")} title={t("comments")} onClick={() => toggle("comments")}>
+          <MessageSquare size={18} />
+        </button>
       </div>
       {panel === "thumbnails" && (
         <div className="panel thumbs">
@@ -98,6 +102,7 @@ export function LeftPanel({ tab }: { tab: DocTab }) {
           )}
         </div>
       )}
+      {panel === "comments" && <CommentsPanel tab={tab} />}
     </div>
   );
 }
