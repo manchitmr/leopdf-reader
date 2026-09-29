@@ -163,3 +163,18 @@ button, input, select { font: inherit; color: inherit; }
 .frame-action { position: absolute; top: -30px; left: 0; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; white-space: nowrap; }
 .inline-editor { position: absolute; min-width: 120px; padding: 0 2px; border: 1px solid var(--accent); background: rgba(255, 255, 255, 0.9); resize: none; overflow: hidden; outline: none; white-space: pre; z-index: 4; }
 .dirty-dot { color: var(--accent); font-weight: 700; }
+.tool-rail { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; }
+.rail-tool {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 64px; padding: 6px 2px; border: none; border-radius: 8px;
+  background: none; color: inherit; cursor: pointer; font-size: 11px; line-height: 1.2; text-align: center;
+}
+.rail-tool:hover { background: var(--accent-soft); }
+.rail-tool.pressed { background: var(--accent-soft); color: var(--accent); }
+.rail-tool span { max-width: 100%; overflow-wrap: anywhere; }
+.swatches { display: flex; gap: 4px; }
+.swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--border); cursor: pointer; }
+.swatch.pressed { box-shadow: 0 0 0 2px var(--accent); }
+.signature-chip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.signature-chip.pressed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.signature-pick { padding: 2px 6px; border: none; border-radius: 6px 0 0 6px; background: #fff; cursor: pointer; }
+.signature-pick img { display: block; height: 24px; max-width: 120px; object-fit: contain; }
