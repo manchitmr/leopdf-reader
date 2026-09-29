@@ -16,7 +16,8 @@ Popular PDF tools, including Adobe Acrobat, break Sinhala and Tamil text when yo
 - **Legacy font rescue** — convert PDFs made with FM Abhaya, Bamini and similar legacy fonts into proper Unicode text.
 - **OCR** — make scanned Sinhala, Tamil and English documents searchable.
 - **Bundled fonts** — Noto Sinhala and Noto Tamil ship with the app, so it works even on machines without these fonts.
-- **Familiar** — Acrobat-style layout: tabs, top toolbar, thumbnails and bookmarks on the left, tools on the right.
+- **Familiar** — Acrobat-style layout: tabs, top toolbar, a vertical tool rail, and thumbnails, bookmarks and comments on the left.
+- **Comment, mark up and sign** — highlight/underline/strikethrough, sticky-note comments, pen and shapes, and visual signatures (drawn, typed in Sinhala/Tamil/English, or from an image). Saved as standard PDF annotations that Acrobat and other readers show.
 - **Private** — works fully offline. No account, no tracking.
 - **UI in English, සිංහල and தமிழ்.**
 
