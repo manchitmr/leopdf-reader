@@ -6,7 +6,7 @@ import { appStore, getTab } from "../state/store";
 import { CommentsPanel } from "./CommentsPanel";
 
 const base: Omit<Annot, "id" | "page" | "kind" | "contents" | "author"> = {
-  subtype: "Text", rect: [0, 0, 10, 10], box: null, color: null, modified: null, movable: true, resizable: false,
+  subtype: "Text", rect: [0, 0, 10, 10], box: null, color: null, modified: null, ours: true, movable: true, resizable: false,
 };
 const list: Annot[] = [
   { ...base, id: 3, page: 0, kind: "note", contents: "කොළඹ", author: "Leo" },

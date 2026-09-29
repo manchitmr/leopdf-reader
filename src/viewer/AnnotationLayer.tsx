@@ -16,6 +16,9 @@ type Gesture =
   | { kind: "markup"; from: Point; rects: Rect[] }
   | null;
 
+/** A click that wanders less than this (CSS px) selects without moving (Windows' drag threshold). */
+const DRAG_THRESHOLD = 4;
+
 /** Width in CSS px of the invisible hit area around ink and lines. */
 const HIT_WIDTH = 10;
 
@@ -126,7 +129,7 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
     if (!g) return;
     setGesture(null);
     const p = pagePoint(e);
-    const moved = (d: Point) => Math.hypot(d[0], d[1]) >= minSize;
+    const moved = (d: Point) => Math.hypot(d[0], d[1]) * tab.zoom >= DRAG_THRESHOLD;
     const sel = { tabId: tab.id, page, id: g.kind === "move" || g.kind === "resize" ? g.annot.id : 0 };
     if (g.kind === "move") {
       if (moved(g.delta)) void moveAnnot(sel, g.delta[0], g.delta[1]);

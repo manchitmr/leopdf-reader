@@ -180,3 +180,52 @@ test("delete removes an annotation; unknown ids throw", () => {
   expect(listAnnotations(page, 0)).toEqual([]);
   expect(() => deleteAnnotation(page, id)).toThrow(`Unknown annotation ${id}`);
 });
+
+/** A Stamp made by another program: its own red artwork, saved and reopened so nothing is marked dirty. */
+function foreignStampPage(): mupdf.PDFPage {
+  const a = page.createAnnotation("Stamp");
+  a.setRect([300, 600, 400, 650]);
+  a.setContents("Approved");
+  a.update();
+  a.setAppearance(null, null, mupdf.Matrix.identity, [0, 0, 100, 50], {}, "1 0 0 rg 0 0 100 50 re f");
+  return reopen();
+}
+
+test("another program's annotation keeps its own appearance when its comment changes or it moves", () => {
+  const p = foreignStampPage();
+  const [annot] = listAnnotations(p, 0);
+  expect(annot).toMatchObject({ kind: "stamp", ours: false, movable: true, resizable: false });
+  expect(pixel(p, 350, 625)).toEqual([255, 0, 0]);
+  updateAnnotation(p, annot.id, { contents: "ශ්‍රී ලංකාව" });
+  moveAnnotation(p, annot.id, 10, -50);
+  expect(pixel(p, 360, 575)).toEqual([255, 0, 0]);
+  expect(pixel(p, 305, 645)).toEqual([255, 255, 255]);
+  const [x0, y0, x1, y1] = annot.box!;
+  expect(listAnnotations(p, 0)[0]).toMatchObject({ contents: "ශ්‍රී ලංකාව" });
+  listAnnotations(p, 0)[0].box!.forEach((v, i) => expect(v).toBeCloseTo([x0 + 10, y0 - 50, x1 + 10, y1 - 50][i], 3));
+  expect(() => updateAnnotation(p, annot.id, { color: RED })).toThrow("colour");
+  expect(() => resizeAnnotation(p, annot.id, [0, 0, 50, 50])).toThrow("cannot be resized");
+});
+
+test("annotations made in LeoPDF are marked as ours", () => {
+  addAnnotation(page, { kind: "note", at: [300, 300], contents: "" }, "");
+  expect(listAnnotations(reopen(), 0)[0].ours).toBe(true);
+});
+
+/** 200×50 PNG: left half red, right half blue. */
+function halvesPng(): Uint8Array {
+  const pix = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, 200, 50], true);
+  const px = pix.getPixels();
+  for (let y = 0; y < 50; y++) for (let x = 0; x < 200; x++) px.set(x < 100 ? [255, 0, 0, 255] : [0, 0, 255, 255], (y * 200 + x) * 4);
+  return pix.asPNG().slice();
+}
+
+test.each([0, 90, 180, 270] as const)("signature stamps stay upright on /Rotate %i pages", (rotate) => {
+  const doc = new mupdf.PDFDocument();
+  doc.insertPage(-1, doc.addPage([0, 0, 300, 500], rotate, doc.newDictionary(), ""));
+  const p = doc.loadPage(0);
+  addAnnotation(p, { kind: "stamp", rect: [50, 50, 250, 100], png: halvesPng() }, "");
+  const [lr, , lb] = pixel(p, 90, 75);
+  const [rr, , rb] = pixel(p, 210, 75);
+  expect([lr > 200, lb < 60, rb > 200, rr < 60]).toEqual([true, true, true, true]);
+});

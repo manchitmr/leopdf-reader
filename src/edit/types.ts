@@ -66,6 +66,8 @@ export interface Annot {
   author: string;
   /** Last modified, ms since epoch. */
   modified: number | null;
+  /** Created by LeoPDF (colour and size can change); others keep their own appearance. */
+  ours: boolean;
   movable: boolean;
   resizable: boolean;
 }

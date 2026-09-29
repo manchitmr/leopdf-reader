@@ -40,7 +40,8 @@ export function AnnotCard({ annot, tab, anchor, pageWidth }: { annot: Annot; tab
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => commit, [annot.id]);
 
-  const colors = MARKUP_KINDS.has(annot.kind) ? MARKUP_COLORS : DRAW_KINDS.has(annot.kind) ? DRAW_COLORS : null;
+  // Another program's annotation keeps its own appearance, so only LeoPDF's own can be recoloured.
+  const colors = !annot.ours ? null : MARKUP_KINDS.has(annot.kind) ? MARKUP_COLORS : DRAW_KINDS.has(annot.kind) ? DRAW_COLORS : null;
   const left = anchor[2] + 8 + CARD_WIDTH <= pageWidth ? anchor[2] + 8 : Math.max(0, anchor[0] - CARD_WIDTH - 8);
   const when = annot.modified ? ` · ${new Date(annot.modified).toLocaleString(lang)}` : "";
 

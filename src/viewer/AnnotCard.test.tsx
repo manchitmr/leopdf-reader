@@ -13,7 +13,7 @@ vi.mock("../engine/client", () => ({ getEngine: () => engine }));
 
 const note: Annot = {
   id: 5, page: 0, kind: "note", subtype: "Text", rect: [100, 100, 120, 120], box: [100, 100, 120, 120],
-  color: [1, 0.84, 0], contents: "", author: "Leo", modified: Date.UTC(2026, 8, 29), movable: true, resizable: false,
+  color: [1, 0.84, 0], contents: "", author: "Leo", modified: Date.UTC(2026, 8, 29), ours: true, movable: true, resizable: false,
 };
 let tabId: string;
 beforeEach(() => {
@@ -49,4 +49,12 @@ test("delete removes the annotation and clears the selection", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Delete" }));
   await waitFor(() => expect(engine.deleteAnnotation).toHaveBeenCalledWith(tabId, 0, 5));
   expect(appStore.getState().selectedAnnot).toBeNull();
+});
+
+test("colour can change only for annotations made in LeoPDF", () => {
+  const mark: Annot = { ...note, kind: "highlight", subtype: "Highlight" };
+  const { rerender } = render(<AnnotCard annot={mark} tab={tab()} anchor={[100, 100, 120, 120]} pageWidth={600} />);
+  expect(screen.queryByRole("group", { name: "Colour" })).toBeTruthy();
+  rerender(<AnnotCard annot={{ ...mark, ours: false }} tab={tab()} anchor={[100, 100, 120, 120]} pageWidth={600} />);
+  expect(screen.queryByRole("group", { name: "Colour" })).toBeNull();
 });

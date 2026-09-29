@@ -10,11 +10,12 @@ if (!window.PointerEvent) (window as unknown as { PointerEvent: typeof MouseEven
 
 const ink: Annot = {
   id: 7, page: 0, kind: "ink", subtype: "Ink", rect: [10, 10, 60, 60], box: [10, 10, 60, 60], strokes: [[[10, 10], [60, 60]]],
-  color: [1, 0, 0], contents: "", author: "", modified: null, movable: true, resizable: false,
+  color: [1, 0, 0], contents: "", author: "", modified: null, ours: true, movable: true, resizable: false,
 };
 const engine = vi.hoisted(() => ({
   listAnnotations: vi.fn(async () => [] as Annot[]),
   addAnnotation: vi.fn(async () => ({ history: { canUndo: true, canRedo: false, dirty: true }, id: "8" })),
+  moveAnnotation: vi.fn(async () => ({ history: { canUndo: true, canRedo: false, dirty: true }, id: "7" })),
 }));
 vi.mock("../engine/client", () => ({ getEngine: () => engine }));
 
@@ -48,4 +49,15 @@ test("the pen tool turns a drag into an ink annotation", async () => {
   fireEvent.pointerUp(capture, { clientX: 140, clientY: 120, pointerId: 1 });
   await act(async () => {});
   expect(engine.addAnnotation).toHaveBeenCalledWith(tabId, 0, { kind: "ink", strokes: [[[100, 100], [120, 110], [140, 120]]], color: [0, 0, 0], width: 2 }, "Leo");
+});
+
+test("a small jitter while clicking selects without moving", async () => {
+  const { container } = await renderLayer();
+  const hit = container.querySelector(".annot-hit")!;
+  fireEvent.pointerDown(hit, { button: 0, clientX: 30, clientY: 30, pointerId: 1 });
+  fireEvent.pointerMove(hit, { clientX: 32, clientY: 31, pointerId: 1 });
+  fireEvent.pointerUp(hit, { clientX: 32, clientY: 31, pointerId: 1 });
+  await act(async () => {});
+  expect(engine.moveAnnotation).not.toHaveBeenCalled();
+  expect(appStore.getState().selectedAnnot?.id).toBe(7);
 });
