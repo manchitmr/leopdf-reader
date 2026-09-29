@@ -23,6 +23,7 @@ import { Toolbar } from "./Toolbar";
 import { ToolOptionsBar } from "./ToolOptionsBar";
 import { ToolRail } from "./ToolRail";
 import { AuthorDialog } from "./AuthorDialog";
+import { SignatureDialog } from "../sign/SignatureDialog";
 import { useShortcuts } from "./useShortcuts";
 import { Welcome } from "./Welcome";
 
@@ -179,6 +180,7 @@ export function App() {
       <Notice />
       <ConfirmDialog />
       <AuthorDialog />
+      <SignatureDialog />
     </div>
   );
 }

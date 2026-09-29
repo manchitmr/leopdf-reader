@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { InlineEditorState } from "../state/store";
 import type { PageTransform } from "./geometry";
 
-const FAMILIES = {
+export const FAMILIES = {
   sans: '"Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif',
   serif: '"Noto Serif", "Noto Serif Sinhala", "Noto Serif Tamil", serif',
 };
