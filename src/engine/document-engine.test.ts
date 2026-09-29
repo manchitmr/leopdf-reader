@@ -124,3 +124,13 @@ test("history of a document never edited is clean", () => {
   engine.open("a", fixture);
   expect(engine.history("a")).toEqual({ canUndo: false, canRedo: false, dirty: false });
 });
+
+test("annotations are added, listed per page and for the whole document", async () => {
+  const r = engine.open("a", fixture);
+  expect(r.status === "ok" && r.info.annotatable).toBe(true);
+  expect(engine.listAnnotations("a")).toEqual([]);
+  await engine.addAnnotation("a", 1, { kind: "note", at: [100, 100], contents: "யாழ்ப்பாணம்" }, "Leo");
+  expect(engine.listAnnotations("a", 0)).toEqual([]);
+  expect(engine.listAnnotations("a").map((x) => [x.page, x.kind, x.contents])).toEqual([[1, "note", "யாழ்ப்பாணம்"]]);
+  expect(engine.history("a").dirty).toBe(true);
+});

@@ -8,7 +8,8 @@ import {
   updateTextObject, type EditContext,
 } from "./page-objects";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
-import type { EditResult, ExistingImage, HistoryState, PageObject, TextStyle } from "./types";
+import * as annots from "./annotations";
+import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
 
 /** Edits one PDF document. Every change is one journal operation, so undo/redo cover it. */
 export class DocumentEditor {
@@ -96,6 +97,40 @@ export class DocumentEditor {
       return addImageObject(ctx, image, [rect[0] + dx, rect[1] + dy, rect[2] + dx, rect[3] + dy]);
     });
     return this.result(id);
+  }
+
+  listAnnotations(page: number): Annot[] {
+    return annots.listAnnotations(this.pdf.loadPage(page), page);
+  }
+
+  async addAnnotation(page: number, spec: NewAnnot, author: string): Promise<EditResult> {
+    try {
+      const id = this.op("Add annotation", page, (ctx) => annots.addAnnotation(ctx.page, spec, author));
+      return this.result(String(id));
+    } catch (e) {
+      if (e instanceof annots.NoTextError) return { ...this.result(), empty: true };
+      throw e;
+    }
+  }
+
+  async updateAnnotation(page: number, id: number, patch: AnnotPatch): Promise<EditResult> {
+    this.op("Edit annotation", page, (ctx) => annots.updateAnnotation(ctx.page, id, patch));
+    return this.result(String(id));
+  }
+
+  async moveAnnotation(page: number, id: number, dx: number, dy: number): Promise<EditResult> {
+    this.op("Move annotation", page, (ctx) => annots.moveAnnotation(ctx.page, id, dx, dy));
+    return this.result(String(id));
+  }
+
+  async resizeAnnotation(page: number, id: number, rect: Rect): Promise<EditResult> {
+    this.op("Resize annotation", page, (ctx) => annots.resizeAnnotation(ctx.page, id, rect));
+    return this.result(String(id));
+  }
+
+  async deleteAnnotation(page: number, id: number): Promise<EditResult> {
+    this.op("Delete annotation", page, (ctx) => annots.deleteAnnotation(ctx.page, id));
+    return this.result();
   }
 
   undo(): EditResult {

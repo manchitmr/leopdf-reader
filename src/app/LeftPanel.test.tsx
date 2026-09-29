@@ -42,7 +42,7 @@ test("a thumbnail keeps a canvas only while it is on screen", async () => {
   const { id } = appStore.getState().addTab({ key: "t", name: "t.pdf", path: null });
   appStore.getState().setOpenResult(id, {
     status: "ok",
-    info: { pageCount: 2, pages: Array(2).fill({ bounds: [0, 0, 600, 800], label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false },
+    info: { pageCount: 2, pages: Array(2).fill({ bounds: [0, 0, 600, 800], label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true },
   });
   const { container } = render(<Thumbnail tab={getTab(appStore.getState(), id)!} page={1} />);
   expect(container.querySelector("canvas")).toBeNull();

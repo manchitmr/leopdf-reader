@@ -1,6 +1,6 @@
 import { transfer } from "comlink";
 import { DocumentEngine } from "./document-engine";
-import type { TextStyle } from "../edit/types";
+import type { AnnotPatch, NewAnnot, TextStyle } from "../edit/types";
 import type { Point, Rect, Rotation } from "./types";
 
 export function createEngineApi(engine = new DocumentEngine()) {
@@ -28,6 +28,12 @@ export function createEngineApi(engine = new DocumentEngine()) {
       engine.replaceImage(docId, page, target, bytes),
     deleteImage: (docId: string, page: number, rect: Rect) => engine.deleteImage(docId, page, rect),
     moveExistingImage: (docId: string, page: number, rect: Rect, dx: number, dy: number) => engine.moveExistingImage(docId, page, rect, dx, dy),
+    addAnnotation: (docId: string, page: number, spec: NewAnnot, author: string) => engine.addAnnotation(docId, page, spec, author),
+    updateAnnotation: (docId: string, page: number, id: number, patch: AnnotPatch) => engine.updateAnnotation(docId, page, id, patch),
+    moveAnnotation: (docId: string, page: number, id: number, dx: number, dy: number) => engine.moveAnnotation(docId, page, id, dx, dy),
+    resizeAnnotation: (docId: string, page: number, id: number, rect: Rect) => engine.resizeAnnotation(docId, page, id, rect),
+    deleteAnnotation: (docId: string, page: number, id: number) => engine.deleteAnnotation(docId, page, id),
+    listAnnotations: (docId: string, page?: number) => engine.listAnnotations(docId, page),
     listObjects: (docId: string, page: number) => engine.listObjects(docId, page),
     listImages: (docId: string, page: number) => engine.listImages(docId, page),
     undo: (docId: string) => engine.undo(docId),

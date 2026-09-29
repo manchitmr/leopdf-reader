@@ -1,7 +1,8 @@
 import * as mupdf from "mupdf";
 import { DocumentEditor } from "../edit/editor";
 import { FontRegistry, type FontSource } from "../edit/font-registry";
-import type { EditResult, ExistingImage, HistoryState, PageObject, TextStyle } from "../edit/types";
+import { listAnnotations } from "../edit/annotations";
+import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, OutlineNode, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
 
@@ -155,6 +156,27 @@ export class DocumentEngine {
   deleteImage = (docId: string, page: number, rect: Rect) => this.edit(docId, (e) => e.deleteImage(page, rect));
   moveExistingImage = (docId: string, page: number, rect: Rect, dx: number, dy: number) =>
     this.edit(docId, (e) => e.moveExistingImage(page, rect, dx, dy));
+  addAnnotation = (docId: string, page: number, spec: NewAnnot, author: string) => this.edit(docId, (e) => e.addAnnotation(page, spec, author));
+  updateAnnotation = (docId: string, page: number, id: number, patch: AnnotPatch) => this.edit(docId, (e) => e.updateAnnotation(page, id, patch));
+  moveAnnotation = (docId: string, page: number, id: number, dx: number, dy: number) => this.edit(docId, (e) => e.moveAnnotation(page, id, dx, dy));
+  resizeAnnotation = (docId: string, page: number, id: number, rect: Rect) => this.edit(docId, (e) => e.resizeAnnotation(page, id, rect));
+  deleteAnnotation = (docId: string, page: number, id: number) => this.edit(docId, (e) => e.deleteAnnotation(page, id));
+
+  /** Comments and markups on one page, or on every page when `page` is omitted. Does not start the edit journal. */
+  listAnnotations(docId: string, page?: number): Annot[] {
+    const pdf = this.get(docId).doc.asPDF();
+    if (!pdf) return [];
+    const pages = page === undefined ? [...Array(pdf.countPages()).keys()] : [page];
+    return pages.flatMap((p) => {
+      const pg = pdf.loadPage(p) as mupdf.PDFPage; // asPDF() types as Document & PDFDocument
+      try {
+        return listAnnotations(pg, p);
+      } finally {
+        pg.destroy();
+      }
+    });
+  }
+
   undo = (docId: string) => this.edit(docId, (e) => e.undo());
   redo = (docId: string) => this.edit(docId, (e) => e.redo());
 
@@ -218,6 +240,7 @@ export class DocumentEngine {
           title: doc.getMetaData(mupdf.Document.META_INFO_TITLE) || null,
           repaired,
           editable: doc.isPDF() && doc.hasPermission("edit"),
+          annotatable: doc.isPDF() && doc.hasPermission("annotate"),
           signed: isSigned(doc),
         },
       };
