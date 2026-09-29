@@ -59,7 +59,7 @@ Vertical icon buttons with a short label under each, like Acrobat:
 - Esc returns to the Select tool (and clears an annotation selection).
 
 ### Selecting and changing annotations (Select tool)
-- Clicking an annotation selects it (hit test: markup quads; ink/line near the stroke; others inside the box). Otherwise the click starts text selection as before.
+- Clicking an annotation selects it (invisible SVG hit shapes: markup quads; ink/line within ~5 px of the stroke; others inside the box). Otherwise the click starts text selection as before.
 - A selected annotation shows a frame and a **comment card** next to it: type label, author · date, a text box for the comment, colour swatches (markup/draw), **Delete**.
 - Drag a selected ink / line / arrow / rectangle / oval / note / signature to move it. Rectangle, oval and signature have a corner handle to resize (signature keeps its aspect ratio). Markup is not movable (it belongs to its text).
 - Delete / Backspace (not in a text box) deletes the selected annotation.
@@ -110,7 +110,7 @@ SignatureDialog ─┘       │                          └─ DocumentEditor 
   - `updateAnnotation(ctx, id, patch: { contents?: string; color?: RGB })`
   - `moveAnnotation(ctx, id, dx, dy)`, `resizeAnnotation(ctx, id, rect)`, `deleteAnnotation(ctx, id)`
   - Lookup by object number: `page.getAnnotations().find(a => a.getObject().asIndirect() === id)`; missing → error.
-  - Move: shift ink list / line / vertices / rect (whichever the type has) and the popup rect; markup → error.
+  - Move: shift ink list / line / vertices / rect (whichever the type has); markup → error.
 - `DocumentEditor` gets thin journaled wrappers (`op("Add comment", …)` etc.) returning `EditResult` with `id` = `String(objectNumber)`.
 - `DocumentEngine` exposes them through `edit()` (which clears the cached text layers), plus `listAnnotations(docId, page?)` (all pages when `page` is omitted; reads without creating the editor).
 - `DocInfo.annotatable = isPDF && hasPermission("annotate")`.
@@ -125,7 +125,8 @@ export interface Annot {
   page: number;
   kind: AnnotKind;
   subtype: string;       // PDF /Subtype, for "other"
-  rect: Rect;            // getBounds(), page space
+  rect: Rect;            // getBounds(), page space (display, hit shapes)
+  box: Rect | null;      // getRect() when the type has a Rect (move/resize use this; bounds include the border)
   quads?: Quad[];        // markup
   strokes?: Point[][];   // ink (line/arrow: one 2-point stroke)
   color: RGB | null;
@@ -146,7 +147,7 @@ export type NewAnnot =
 ```
 - Note: `Text` annotation, icon `Comment`, 20×20 pt box centred on the click, yellow.
 - Arrow: `Line` with line endings `None` / `OpenArrow`.
-- Stamp: `Stamp` with `setStampImage`, `/Name /LeoPDFSignature`, subject "Signature".
+- Stamp: `Stamp` with `setStampImage`, `/Name /LeoPDFSignature`.
 - All new annotations: author, creation/modification date, `update()`.
 
 ### Main-thread side
@@ -158,9 +159,9 @@ export type NewAnnot =
   - `leftPanel` gains `"comments"`; `dialog` gains `{ kind: "author" }`; the `signed` dialog carries what to do after "Continue" (`{ editMode: true }` or `{ tool }`).
   - `setTool` clears `selectedAnnot`; entering Edit mode sets `tool: "select"`; picking a non-select/hand tool turns Edit mode off.
 - **`src/app/annot-actions.ts`** (same dependency-injection pattern as `edit-actions.ts`): `chooseTool` (permission → signed → author gating), `addAnnot`, `updateAnnotContents`, `setAnnotColor`, `moveAnnot`, `resizeAnnot`, `deleteSelectedAnnot`, `placeSignature`. All go through `runEdit`, so history, dirty dot, re-render and notices work unchanged.
-- **`src/viewer/annot-geometry.ts`** — pure: `hitTest(annots, point, tolerance)`, `distanceToPolyline`, `dragRect(from, to)`, `fitSignature(at, width, aspect)`.
+- **`src/viewer/annot-geometry.ts`** — pure: `dragRect`, `fitSignature`, `resizeBox`, `shiftRect`, `quadBox`, `pointsAttr`, `drawSpec` (pointer path → `NewAnnot`).
 - **`src/viewer/AnnotationLayer.tsx`** — per page, when not in Edit mode. Loads `listAnnotations(tab, page)` on `revision` change. Handles pointer input for the active tool:
-  - select: hit test → select / drag-move / resize; miss → falls through to text selection (PageSlot keeps its handlers for that);
+  - select: SVG hit shapes (pointer-events only on the shapes) → select / drag-move / resize; clicks elsewhere fall through to PageSlot's text selection;
   - markup: drag previews via `select()` rects, pointer-up → `addAnnot`;
   - draw: SVG preview of the stroke/shape, pointer-up → `addAnnot`;
   - comment: click → `addAnnot(note)` then select it with the card focused;
@@ -188,7 +189,7 @@ export type NewAnnot =
 ## 7. Testing
 
 - **Worker (Vitest + real MuPDF, node):** `annotations.test.ts` — each kind creates the right subtype/colour/geometry; markup quads over "Hello world" and the Sinhala line of `sample-si-ta.pdf`; markup over blank area → null; Sinhala/Tamil contents + author survive save/reopen; move shifts ink/line/rect/note/stamp and rejects markup; resize stamp/rect; delete; list skips Link/Widget/Popup; rotated page (`/Rotate 90`) keeps page-space geometry; editor undo/redo round-trips add + move + delete.
-- **Pure UI logic:** `annot-geometry.test.ts` (hit testing, polyline distance, drag rect, signature fit), `signature-image.test.ts` (trim, whitening), `signatures.test.ts` (limit, bad storage).
+- **Pure UI logic:** `annot-geometry.test.ts` (drag rect, signature fit, resize, draw spec), `signature-image.test.ts` (trim, whitening), `signatures.test.ts` (limit, bad storage).
 - **Store/actions:** tool transitions vs Edit mode, author/signature persistence, `chooseTool` gating order (permission → signed → author), `deleteSelectedAnnot`, `placeSignature` returns to Select with the stamp selected.
 - **Components (Testing Library):** ToolRail pressed states and Edit-mode buttons, ToolOptionsBar per tool, CommentsPanel listing/click/empty state, AuthorDialog OK/Skip.
 - **Manual (browser preview + built app):** highlight Sinhala/Tamil lines, comment in Sinhala, draw each shape, create a signature each way and place it, undo/redo, save, reopen in Acrobat/Chrome/Preview; Windows build via `build.yml`.
