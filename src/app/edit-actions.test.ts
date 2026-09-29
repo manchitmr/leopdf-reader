@@ -2,6 +2,7 @@ import { expect, test, vi } from "vitest";
 import type { EditResult, HistoryState } from "../edit/types";
 import type { DocInfo } from "../engine/types";
 import { createAppStore, getTab } from "../state/store";
+import { registerCommentDraft } from "./comment-draft";
 import { commitInlineEditor, enterEditMode, requestClose, requestQuit, resolveDialog, saveTab, type EditDeps } from "./edit-actions";
 
 const clean: HistoryState = { canUndo: false, canRedo: false, dirty: false };
@@ -129,4 +130,45 @@ test("entering edit mode: disallowed PDFs show a notice; signed PDFs ask once", 
   await resolveDialog("save", signed.deps); // "Continue" maps to the primary choice
   expect(signed.store.getState().editMode).toBe(true);
   expect(signed.tab().signedAcknowledged).toBe(true);
+});
+
+test("saving first stores a comment still being typed", async () => {
+  const { id, engine, deps } = setup();
+  const order: string[] = [];
+  engine.save.mockImplementation(async () => {
+    order.push("save");
+    return new Uint8Array([37]);
+  });
+  const unregister = registerCommentDraft({ pending: () => true, flush: async () => void order.push("flush") });
+  await saveTab(id, { as: false }, deps);
+  unregister();
+  expect(order).toEqual(["flush", "save"]);
+});
+
+test("saving first places text still open in the inline editor", async () => {
+  const { store, id, engine, deps } = setup();
+  store.getState().openInlineEditor({ tabId: id, page: 0, origin: [10, 20], objectId: null, text: "කොළඹ", style: store.getState().textStyle });
+  await saveTab(id, { as: false }, deps);
+  expect(engine.addText).toHaveBeenCalled();
+  expect(engine.addText.mock.invocationCallOrder[0]).toBeLessThan(engine.save.mock.invocationCallOrder[0]);
+});
+
+test("quitting or closing with a comment still being typed stores it, then asks", async () => {
+  const { store, id, deps } = setup();
+  let pending = true;
+  const unregister = registerCommentDraft({
+    pending: () => pending,
+    flush: async () => {
+      pending = false;
+      store.getState().applyHistory(id, dirty);
+    },
+  });
+  expect(requestQuit(deps)).toBe(false);
+  await vi.waitFor(() => expect(store.getState().dialog).toEqual({ kind: "unsaved", tabIds: [id], action: "quit" }));
+  store.getState().setDialog(null);
+  store.getState().applyHistory(id, clean);
+  pending = true;
+  await requestClose(id, deps);
+  expect(store.getState().dialog).toEqual({ kind: "unsaved", tabIds: [id], action: "close" });
+  unregister();
 });

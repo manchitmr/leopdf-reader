@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { deleteSelectedAnnot, updateAnnot } from "../app/annot-actions";
+import { registerCommentDraft } from "../app/comment-draft";
 import { DRAW_KINDS, KIND_LABEL, MARKUP_KINDS } from "../app/annot-labels";
 import { Swatches } from "../app/Swatches";
 import type { Annot } from "../edit/types";
@@ -31,14 +32,17 @@ export function AnnotCard({ annot, tab, anchor, pageWidth }: { annot: Annot; tab
     if (focus) box.current?.focus();
   }, [focus, annot.id]);
 
-  const commit = () => {
+  const commit = async () => {
     if (latest.current === saved.current) return;
     saved.current = latest.current;
-    void updateAnnot(sel, { contents: latest.current });
+    await updateAnnot(sel, { contents: latest.current });
   };
+  // Save, close and quit store the text first, even though the textarea never lost focus.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => registerCommentDraft({ pending: () => latest.current !== saved.current, flush: commit }), [annot.id]);
   // Clicking elsewhere can unmount the card before the textarea's blur fires: save then.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => commit, [annot.id]);
+  useEffect(() => () => void commit(), [annot.id]);
 
   // Another program's annotation keeps its own appearance, so only LeoPDF's own can be recoloured.
   const colors = !annot.ours ? null : MARKUP_KINDS.has(annot.kind) ? MARKUP_COLORS : DRAW_KINDS.has(annot.kind) ? DRAW_COLORS : null;
@@ -61,12 +65,12 @@ export function AnnotCard({ annot, tab, anchor, pageWidth }: { annot: Annot; tab
         placeholder={t("commentPlaceholder")}
         aria-label={t("commentPlaceholder")}
         onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
+        onBlur={() => void commit()}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
-            commit();
+            void commit();
           } else if (e.key === "Escape") appStore.getState().selectAnnot(null);
         }}
       />

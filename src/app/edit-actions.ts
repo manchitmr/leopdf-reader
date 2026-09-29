@@ -4,7 +4,8 @@ import type { EditResult } from "../edit/types";
 import { downloadPdf, pickImage, pickSavePath, writePdf } from "../platform/files";
 import { isTauri } from "../platform/sources";
 import { activeTab, appStore, getTab, type AppStore, type EditTool } from "../state/store";
-import { chooseTool } from "./annot-actions"; // functions only — the import cycle is safe
+import { chooseTool } from "./annot-actions";
+import { flushComment, hasPendingComment } from "./comment-draft"; // functions only — the import cycle is safe
 import { closeDocument } from "./open-document";
 
 type Async<T> = T extends (...a: infer A) => infer R ? (...a: A) => Promise<Awaited<R>> : never;
@@ -82,7 +83,14 @@ export function redo(tabId: string, deps: EditDeps = defaultEditDeps()) {
   return runEdit(tabId, () => deps.engine.redo(tabId), deps);
 }
 
+/** Stores text the user is still typing (comment card, inline text editor) before saving or closing. */
+async function flushTyping(deps: EditDeps): Promise<void> {
+  await flushComment();
+  if (deps.store.getState().inlineEditor) await commitInlineEditor(deps);
+}
+
 export async function saveTab(tabId: string, { as }: { as: boolean }, deps: EditDeps = defaultEditDeps()): Promise<boolean> {
+  await flushTyping(deps);
   const s = deps.store.getState();
   const tab = getTab(s, tabId);
   if (!tab) return false;
@@ -107,6 +115,7 @@ export async function saveTab(tabId: string, { as }: { as: boolean }, deps: Edit
 }
 
 export async function requestClose(tabId: string, deps: EditDeps = defaultEditDeps()): Promise<void> {
+  await flushTyping(deps);
   const tab = getTab(deps.store.getState(), tabId);
   if (tab?.dirty) deps.store.getState().setDialog({ kind: "unsaved", tabIds: [tabId], action: "close" });
   else await closeDocument(tabId, deps.store, deps.engine);
@@ -114,6 +123,13 @@ export async function requestClose(tabId: string, deps: EditDeps = defaultEditDe
 
 /** Returns true if the app may quit now; otherwise opens the unsaved-changes dialog. */
 export function requestQuit(deps: EditDeps = defaultEditDeps()): boolean {
+  if (hasPendingComment() || deps.store.getState().inlineEditor) {
+    // Store the typing first (it may make a tab dirty), then ask again; the window stays open meanwhile.
+    void flushTyping(deps).then(() => {
+      if (requestQuit(deps)) quitHandler.quit();
+    });
+    return false;
+  }
   const dirty = deps.store.getState().tabs.filter((t) => t.dirty).map((t) => t.id);
   if (dirty.length === 0) return true;
   deps.store.getState().setDialog({ kind: "unsaved", tabIds: dirty, action: "quit" });

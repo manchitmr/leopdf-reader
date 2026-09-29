@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Annot } from "../edit/types";
 import { appStore, getTab } from "../state/store";
+import { flushComment, hasPendingComment } from "../app/comment-draft";
 import { AnnotCard } from "./AnnotCard";
 
 const engine = vi.hoisted(() => ({
@@ -57,4 +58,16 @@ test("colour can change only for annotations made in LeoPDF", () => {
   expect(screen.queryByRole("group", { name: "Colour" })).toBeTruthy();
   rerender(<AnnotCard annot={{ ...mark, ours: false }} tab={tab()} anchor={[100, 100, 120, 120]} pageWidth={600} />);
   expect(screen.queryByRole("group", { name: "Colour" })).toBeNull();
+});
+
+test("save and quit can store the comment being typed without a blur", async () => {
+  render(<AnnotCard annot={note} tab={tab()} anchor={[100, 100, 120, 120]} pageWidth={600} />);
+  expect(hasPendingComment()).toBe(false);
+  fireEvent.change(screen.getByLabelText("Add a comment…"), { target: { value: "கொழும்பு" } });
+  expect(hasPendingComment()).toBe(true);
+  await flushComment();
+  expect(engine.updateAnnotation).toHaveBeenCalledWith(tabId, 0, 5, { contents: "கொழும்பு" });
+  expect(hasPendingComment()).toBe(false);
+  cleanup();
+  expect(engine.updateAnnotation).toHaveBeenCalledTimes(1);
 });
