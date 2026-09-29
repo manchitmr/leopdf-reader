@@ -301,7 +301,7 @@ export function createAppStore(init: Partial<Settings> = {}) {
       },
 
       activate(id) {
-        set({ activeId: id });
+        set((s) => ({ activeId: id, selectedAnnot: s.selectedAnnot?.tabId === id ? s.selectedAnnot : null }));
         // The viewer remounts on tab switch; ask it to return to where the reader was.
         update(id, (t) => scrollTo(t, t.currentPage));
       },

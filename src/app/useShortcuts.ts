@@ -48,7 +48,7 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
         void deleteSelected();
         return;
       }
-      if ((e.key === "Delete" || e.key === "Backspace") && s.selectedAnnot) {
+      if ((e.key === "Delete" || e.key === "Backspace") && s.selectedAnnot?.tabId === tab.id) {
         e.preventDefault();
         void deleteSelectedAnnot();
         return;

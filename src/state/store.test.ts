@@ -218,3 +218,12 @@ test("closing a tab clears its annotation selection", () => {
   store.getState().closeTab(id);
   expect(store.getState().selectedAnnot).toBeNull();
 });
+
+test("switching tabs clears the annotation selection", () => {
+  const { store, id } = storeWithDoc();
+  const other = store.getState().addTab(src("b")).id;
+  store.getState().activate(id);
+  store.getState().selectAnnot({ tabId: id, page: 0, id: 3 });
+  store.getState().activate(other);
+  expect(store.getState().selectedAnnot).toBeNull();
+});
