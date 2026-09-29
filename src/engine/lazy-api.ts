@@ -5,6 +5,7 @@ const METHODS = [
   "addText", "updateText", "moveObject", "resizeObject", "deleteObject", "addImage", "replaceImage", "deleteImage",
   "moveExistingImage", "listObjects", "listImages", "undo", "redo", "history", "save", "markSaved",
   "addAnnotation", "updateAnnotation", "moveAnnotation", "resizeAnnotation", "deleteAnnotation", "listAnnotations",
+  "addBookmark", "renameBookmark", "deleteBookmark", "outline",
 ] as const satisfies readonly (keyof EngineApi)[];
 
 type LazyApi = { [K in keyof EngineApi]: (...args: Parameters<EngineApi[K]>) => Promise<Awaited<ReturnType<EngineApi[K]>>> };

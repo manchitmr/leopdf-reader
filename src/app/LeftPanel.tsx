@@ -1,10 +1,11 @@
-import { Bookmark, ChevronDown, ChevronRight, LayoutGrid, MessageSquare } from "lucide-react";
+import { Bookmark, ChevronDown, ChevronRight, LayoutGrid, MessageSquare, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { OutlineNode } from "../engine/types";
 import { useT } from "../i18n/useT";
 import { appStore, useApp, type DocTab } from "../state/store";
 import { pageTransform } from "../viewer/geometry";
 import { PageCanvas } from "../viewer/PageCanvas";
+import { BookmarksPanel } from "./BookmarksPanel";
 import { CommentsPanel } from "./CommentsPanel";
 
 const THUMB_WIDTH = 120;
@@ -38,18 +39,58 @@ export function Thumbnail({ tab, page }: { tab: DocTab; page: number }) {
   );
 }
 
-export function OutlineTree({ nodes, onSelect }: { nodes: OutlineNode[]; onSelect: (page: number) => void }) {
+/** Rename/delete support for the Bookmarks panel; without it the tree is read-only. */
+export interface OutlineEditing {
+  /** Path key ("0.2") of the bookmark whose name is being edited. */
+  editing: string | null;
+  onEdit(key: string | null): void;
+  onRename(path: number[], title: string): void;
+  onDelete(path: number[]): void;
+}
+
+export function OutlineTree({ nodes, onSelect, edit }: { nodes: OutlineNode[]; onSelect: (page: number) => void; edit?: OutlineEditing }) {
   return (
     <ul className="outline">
       {nodes.map((node, i) => (
-        <OutlineItem key={i} node={node} onSelect={onSelect} />
+        <OutlineItem key={i} node={node} onSelect={onSelect} edit={edit} />
       ))}
     </ul>
   );
 }
 
-function OutlineItem({ node, onSelect }: { node: OutlineNode; onSelect: (page: number) => void }) {
+function RenameInput({ node, edit }: { node: OutlineNode; edit: OutlineEditing }) {
+  const t = useT();
+  const [value, setValue] = useState(node.title);
+  const done = useRef(false);
+  const finish = (save: boolean) => {
+    if (done.current) return;
+    done.current = true;
+    const title = value.trim();
+    if (save && title && title !== node.title) edit.onRename(node.path, title);
+    edit.onEdit(null);
+  };
+  return (
+    <input
+      className="outline-rename"
+      autoFocus
+      aria-label={t("renameBookmark")}
+      value={value}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") finish(true);
+        else if (e.key === "Escape") finish(false);
+      }}
+      onBlur={() => finish(true)}
+    />
+  );
+}
+
+function OutlineItem({ node, onSelect, edit }: { node: OutlineNode; onSelect: (page: number) => void; edit?: OutlineEditing }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const renaming = edit?.editing === node.path.join(".");
   return (
     <li>
       <div className="outline-row">
@@ -60,11 +101,25 @@ function OutlineItem({ node, onSelect }: { node: OutlineNode; onSelect: (page: n
         ) : (
           <span className="outline-indent" />
         )}
-        <button className="outline-title" onClick={() => node.page !== null && onSelect(node.page)} disabled={node.page === null}>
-          {node.title}
-        </button>
+        {renaming && edit ? (
+          <RenameInput node={node} edit={edit} />
+        ) : (
+          <button
+            className="outline-title"
+            onClick={() => node.page !== null && onSelect(node.page)}
+            onDoubleClick={() => edit?.onEdit(node.path.join("."))}
+            disabled={node.page === null && !edit}
+          >
+            {node.title}
+          </button>
+        )}
+        {edit && !renaming && (
+          <button className="icon-button small outline-delete" aria-label={t("deleteBookmark")} title={t("deleteBookmark")} onClick={() => edit.onDelete(node.path)}>
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
-      {open && <OutlineTree nodes={node.children} onSelect={onSelect} />}
+      {open && <OutlineTree nodes={node.children} onSelect={onSelect} edit={edit} />}
     </li>
   );
 }
@@ -93,15 +148,7 @@ export function LeftPanel({ tab }: { tab: DocTab }) {
           ))}
         </div>
       )}
-      {panel === "bookmarks" && (
-        <div className="panel">
-          {tab.info!.outline.length === 0 ? (
-            <p className="muted panel-empty">{t("noBookmarks")}</p>
-          ) : (
-            <OutlineTree nodes={tab.info!.outline} onSelect={(page) => appStore.getState().goToPage(tab.id, page)} />
-          )}
-        </div>
-      )}
+      {panel === "bookmarks" && <BookmarksPanel tab={tab} />}
       {panel === "comments" && <CommentsPanel tab={tab} />}
     </div>
   );

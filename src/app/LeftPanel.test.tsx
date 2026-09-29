@@ -10,8 +10,8 @@ test("outline tree shows nested titles and navigates on click", () => {
   render(
     <OutlineTree
       nodes={[
-        { title: "Chapter One", page: 0, children: [{ title: "Section 1.1", page: 1, children: [] }] },
-        { title: "No target", page: null, children: [] },
+        { title: "Chapter One", page: 0, path: [0], children: [{ title: "Section 1.1", page: 1, path: [0, 0], children: [] }] },
+        { title: "No target", page: null, path: [1], children: [] },
       ]}
       onSelect={onSelect}
     />,

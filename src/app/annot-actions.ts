@@ -54,10 +54,15 @@ export async function addAnnot(tabId: string, page: number, spec: NewAnnot, deps
 
 export async function addNote(tabId: string, page: number, at: Point, deps: EditDeps = defaultEditDeps()): Promise<void> {
   const id = await addAnnot(tabId, page, { kind: "note", at, contents: "" }, deps);
-  if (id === null) return;
-  const s = deps.store.getState();
-  s.setTool("select");
-  s.selectAnnot({ tabId, page, id }, true);
+  // The Comment tool stays on so several notes can be placed; the new one opens for typing.
+  if (id !== null) deps.store.getState().selectAnnot({ tabId, page, id }, true);
+}
+
+/** Comment tool dragged over text: highlight it and open the highlight's comment box (Acrobat's "comment on text"). */
+export async function addTextComment(tabId: string, page: number, from: Point, to: Point, deps: EditDeps = defaultEditDeps()): Promise<void> {
+  const color = deps.store.getState().markupStyle.colors.highlight;
+  const id = await addAnnot(tabId, page, { kind: "highlight", from, to, color }, deps);
+  if (id !== null) deps.store.getState().selectAnnot({ tabId, page, id }, true);
 }
 
 export async function placeSignature(tabId: string, page: number, at: Point, deps: EditDeps = defaultEditDeps()): Promise<void> {

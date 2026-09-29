@@ -1,4 +1,4 @@
-import type { NewAnnot } from "../edit/types";
+import type { Annot, NewAnnot } from "../edit/types";
 import type { Point, Quad, Rect } from "../engine/types";
 import type { DrawStyle } from "../state/store";
 import type { PageTransform } from "./geometry";
@@ -47,4 +47,30 @@ export function drawSpec({ shape, color, width }: DrawStyle, points: Point[], mi
 
 export function pointsAttr(points: Point[], t: PageTransform): string {
   return points.map((p) => t.toDisplay(p).join(",")).join(" ");
+}
+
+function distanceToSegment([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+const inRect = ([x, y]: Point, [x0, y0, x1, y1]: Rect) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+
+/**
+ * The topmost annotation at `p` (page space): markup by its text quads, ink and lines within `tolerance`
+ * of a stroke, everything else by its box. Mirrors the layer's SVG hit shapes for tools that cover them.
+ */
+export function annotAt(annots: Annot[], p: Point, tolerance: number): Annot | null {
+  for (let i = annots.length - 1; i >= 0; i--) {
+    const a = annots[i];
+    if (a.quads?.length) {
+      if (a.quads.some((q) => inRect(p, quadBox(q)))) return a;
+    } else if (a.strokes && (a.kind === "ink" || a.kind === "line" || a.kind === "arrow")) {
+      if (a.strokes.some((s) => s.some((q, j) => distanceToSegment(p, j === 0 ? q : s[j - 1], q) <= tolerance))) return a;
+    } else if (inRect(p, a.rect)) return a;
+  }
+  return null;
 }

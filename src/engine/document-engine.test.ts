@@ -134,3 +134,15 @@ test("annotations are added, listed per page and for the whole document", async 
   expect(engine.listAnnotations("a").map((x) => [x.page, x.kind, x.contents])).toEqual([[1, "note", "யாழ்ப்பாணம்"]]);
   expect(engine.history("a").dirty).toBe(true);
 });
+
+test("the outline is read fresh after bookmark edits", async () => {
+  engine.open("a", fixture);
+  await engine.addBookmark("a", 0, "කොළඹ");
+  expect(engine.outline("a").map((n) => [n.title, n.page, n.path])).toEqual([
+    ["Chapter One", 0, [0]],
+    ["Chapter Two", 1, [1]],
+    ["කොළඹ", 0, [2]],
+  ]);
+  await engine.deleteBookmark("a", [2]);
+  expect(engine.outline("a")).toHaveLength(2);
+});

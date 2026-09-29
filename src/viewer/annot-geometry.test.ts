@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
+import type { Annot } from "../edit/types";
 import type { DrawStyle } from "../state/store";
-import { dragRect, drawSpec, fitSignature, pathLength, pointsAttr, quadBox, resizeBox, shiftRect } from "./annot-geometry";
+import { annotAt, dragRect, drawSpec, fitSignature, pathLength, pointsAttr, quadBox, resizeBox, shiftRect } from "./annot-geometry";
 import { pageTransform } from "./geometry";
 
 const style = (shape: DrawStyle["shape"]): DrawStyle => ({ shape, color: [1, 0, 0], width: 2 });
@@ -34,4 +35,22 @@ test("pointer paths become annotations only when they are big enough", () => {
 test("points are converted to display space for SVG", () => {
   const t = pageTransform([0, 0, 100, 200], 2, 0);
   expect(pointsAttr([[1, 2], [3, 4]], t)).toBe("2,4 6,8");
+});
+
+const annot = (over: Partial<Annot> & Pick<Annot, "id" | "rect">): Annot => ({
+  page: 0, kind: "note", subtype: "Text", box: null, color: null, contents: "", author: "", modified: null, ours: true, movable: true, resizable: false, ...over,
+});
+
+test("the annotation under a point is found, topmost first; markup by its quads, drawings by their strokes", () => {
+  const note = annot({ id: 1, rect: [10, 10, 30, 30] });
+  const mark = annot({ id: 2, kind: "highlight", rect: [0, 0, 200, 100], quads: [[50, 50, 150, 50, 50, 60, 150, 60]] });
+  const top = annot({ id: 3, rect: [20, 20, 40, 40] });
+  const ink = annot({ id: 4, kind: "ink", rect: [300, 300, 400, 400], strokes: [[[300, 300], [400, 400]]] });
+  const list = [note, mark, top, ink];
+  expect(annotAt(list, [25, 25], 3)?.id).toBe(3);
+  expect(annotAt(list, [15, 15], 3)?.id).toBe(1);
+  expect(annotAt(list, [100, 55], 3)?.id).toBe(2);
+  expect(annotAt(list, [100, 80], 3)).toBeNull(); // inside the highlight's bounds, not on its text
+  expect(annotAt(list, [351, 349], 3)?.id).toBe(4);
+  expect(annotAt(list, [390, 310], 3)).toBeNull(); // inside the drawing's box, far from the stroke
 });

@@ -9,6 +9,8 @@ import {
 } from "./page-objects";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
 import * as annots from "./annotations";
+import * as bookmarks from "./bookmarks";
+import type { OutlineNode } from "../engine/types";
 import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
 
 /** Edits one PDF document. Every change is one journal operation, so undo/redo cover it. */
@@ -133,6 +135,26 @@ export class DocumentEditor {
     return this.result();
   }
 
+  outline(): OutlineNode[] {
+    return bookmarks.listOutline(this.pdf);
+  }
+
+  /** Adds a top-level bookmark; the result's id is its path (e.g. "2"). */
+  async addBookmark(page: number, title: string): Promise<EditResult> {
+    const path = this.journaled("Add bookmark", () => bookmarks.addBookmark(this.pdf, page, title));
+    return this.result(path.join("."));
+  }
+
+  async renameBookmark(path: number[], title: string): Promise<EditResult> {
+    this.journaled("Rename bookmark", () => bookmarks.renameBookmark(this.pdf, path, title));
+    return this.result();
+  }
+
+  async deleteBookmark(path: number[]): Promise<EditResult> {
+    this.journaled("Delete bookmark", () => bookmarks.deleteBookmark(this.pdf, path));
+    return this.result();
+  }
+
   undo(): EditResult {
     if (this.pdf.canUndo()) this.pdf.undo();
     this.fonts.reset();
@@ -168,9 +190,14 @@ export class DocumentEditor {
 
   private op<T>(name: string, page: number, fn: (ctx: EditContext) => T): T {
     const ctx: EditContext = { pdf: this.pdf, page: this.pdf.loadPage(page), fonts: this.fonts };
+    return this.journaled(name, () => fn(ctx));
+  }
+
+  /** Runs `fn` as one undoable journal operation; a failure rolls it back completely. */
+  private journaled<T>(name: string, fn: () => T): T {
     this.pdf.beginOperation(name);
     try {
-      const value = fn(ctx);
+      const value = fn();
       this.fonts.flush();
       this.pdf.endOperation();
       return value;

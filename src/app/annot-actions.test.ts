@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import type { EditResult, HistoryState } from "../edit/types";
 import type { DocInfo } from "../engine/types";
 import { createAppStore } from "../state/store";
-import { addAnnot, addNote, chooseTool, dataUrlToBytes, deleteSelectedAnnot, placeSignature, resolveAuthorDialog } from "./annot-actions";
+import { addAnnot, addNote, addTextComment, chooseTool, dataUrlToBytes, deleteSelectedAnnot, placeSignature, resolveAuthorDialog } from "./annot-actions";
 import { redo, resolveDialog, undo, type EditDeps } from "./edit-actions";
 
 const clean: HistoryState = { canUndo: false, canRedo: false, dirty: false };
@@ -73,11 +73,19 @@ test("new annotations carry the trimmed author name", async () => {
   expect(engine.addAnnotation).toHaveBeenCalledWith(id, 0, expect.objectContaining({ kind: "rect" }), "Leo");
 });
 
-test("placing a note selects it with the comment box focused and returns to Select", async () => {
+test("placing a note keeps the Comment tool and focuses its comment box", async () => {
   const { store, id, deps } = setup();
   store.getState().setTool("comment");
   await addNote(id, 0, [100, 100], deps);
-  expect(store.getState()).toMatchObject({ tool: "select", selectedAnnot: { tabId: id, page: 0, id: 42 }, focusComment: true });
+  expect(store.getState()).toMatchObject({ tool: "comment", selectedAnnot: { tabId: id, page: 0, id: 42 }, focusComment: true });
+});
+
+test("commenting on text highlights it and opens its comment box", async () => {
+  const { store, id, engine, deps } = setup();
+  store.getState().setTool("comment");
+  await addTextComment(id, 0, [10, 20], [90, 20], deps);
+  expect(engine.addAnnotation).toHaveBeenCalledWith(id, 0, { kind: "highlight", from: [10, 20], to: [90, 20], color: store.getState().markupStyle.colors.highlight }, "");
+  expect(store.getState()).toMatchObject({ tool: "comment", selectedAnnot: { id: 42 }, focusComment: true });
 });
 
 test("placing a signature uses the chosen signature in a 150 pt wide box", async () => {

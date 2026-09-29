@@ -216,3 +216,11 @@ button, input, select { font: inherit; color: inherit; }
 .signature-controls button:not(.swatch) { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); cursor: pointer; }
 .signature-pad { width: 100%; border: 1px dashed var(--border); border-radius: 8px; background: #fff; touch-action: none; }
 .signature-pad.mode-draw { cursor: crosshair; }
+.panel-action {
+  display: flex; align-items: center; gap: 6px; width: 100%; margin-bottom: 8px; padding: 6px 8px;
+  border: 1px dashed var(--border); border-radius: 6px; background: none; color: inherit; cursor: pointer;
+}
+.panel-action:hover { background: var(--accent-soft); }
+.outline-delete { opacity: 0; flex: none; }
+.outline-row:hover .outline-delete, .outline-delete:focus-visible { opacity: 1; }
+.outline-rename { flex: 1; min-width: 0; height: 24px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: inherit; }
