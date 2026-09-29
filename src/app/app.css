@@ -178,3 +178,22 @@ button, input, select { font: inherit; color: inherit; }
 .signature-chip.pressed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .signature-pick { padding: 2px 6px; border: none; border-radius: 6px 0 0 6px; background: #fff; cursor: pointer; }
 .signature-pick img { display: block; height: 24px; max-width: 120px; object-fit: contain; }
+.annot-layer { position: absolute; inset: 0; pointer-events: none; }
+.annot-svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.annot-hit { pointer-events: all; fill: transparent; cursor: pointer; }
+.annot-hit.stroke polyline { fill: none; stroke: transparent; pointer-events: stroke; }
+.annot-frame { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.annot-capture { position: absolute; inset: 0; pointer-events: auto; cursor: crosshair; }
+.annot-layer.tool-comment .annot-capture { cursor: copy; }
+.annot-handle { pointer-events: auto; }
+.signature-ghost { position: absolute; opacity: 0.7; pointer-events: none; }
+.annot-card {
+  position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 10px; pointer-events: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+}
+.annot-card-head { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.annot-card textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+  font-family: "Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif; font-size: 13px;
+}
+.annot-card-actions { display: flex; align-items: center; gap: 6px; }

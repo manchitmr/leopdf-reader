@@ -2,6 +2,7 @@ import { useMemo, useRef } from "react";
 import { getEngine } from "../engine/client";
 import type { Point } from "../engine/types";
 import { appStore, useApp, type DocTab } from "../state/store";
+import { AnnotationLayer } from "./AnnotationLayer";
 import { EditLayer } from "./EditLayer";
 import { pageTransform } from "./geometry";
 import type { Slot } from "./layout";
@@ -21,6 +22,7 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
   };
   const onPointerDown = (e: React.PointerEvent) => {
     if (tool !== "select" || e.button !== 0) return;
+    appStore.getState().selectAnnot(null);
     start.current = pagePoint(e);
     appStore.getState().setSelection(tab.id, null);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -65,6 +67,7 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
           return <div key={`s${i}`} className="selection" style={{ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }} />;
         })}
       </div>
+      {!editMode && <AnnotationLayer tab={tab} page={slot.page} transform={transform} />}
       {editMode && <EditLayer tab={tab} page={slot.page} transform={transform} zoom={tab.zoom} />}
     </div>
   );
