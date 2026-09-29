@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { SIGNATURE_WIDTH, addAnnot, addNote, moveAnnot, placeSignature, resizeAnnot } from "../app/annot-actions";
+import { SIGNATURE_WIDTH, addAnnot, addNote, addTextComment, moveAnnot, placeSignature, resizeAnnot } from "../app/annot-actions";
 import { getEngine } from "../engine/client";
 import type { Annot } from "../edit/types";
 import type { Point, Rect } from "../engine/types";
 import { cssColor } from "../state/palette";
 import { appStore, useApp, type DocTab } from "../state/store";
 import { AnnotCard } from "./AnnotCard";
-import { dragRect, drawSpec, fitSignature, pointsAttr, quadBox, resizeBox, shiftRect } from "./annot-geometry";
+import { annotAt, dragRect, drawSpec, fitSignature, pointsAttr, quadBox, resizeBox, shiftRect } from "./annot-geometry";
 import type { PageTransform } from "./geometry";
 
 type Gesture =
@@ -14,6 +14,8 @@ type Gesture =
   | { kind: "resize"; annot: Annot; start: Point; delta: Point }
   | { kind: "stroke"; points: Point[] }
   | { kind: "markup"; from: Point; rects: Rect[] }
+  /** Comment tool: a click places a note (or opens the annotation under it); a drag over text highlights it. */
+  | { kind: "comment"; from: Point; rects: Rect[] }
   | null;
 
 /** A click that wanders less than this (CSS px) selects without moving (Windows' drag threshold). */
@@ -96,10 +98,11 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
   const onCaptureDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     const p = pagePoint(e);
-    if (tool === "comment") return void addNote(tab.id, page, p);
     if (tool === "sign") return void placeSignature(tab.id, page, p);
     capture(e);
-    setGesture(tool === "markup" ? { kind: "markup", from: p, rects: [] } : { kind: "stroke", points: [p] });
+    setGesture(
+      tool === "markup" ? { kind: "markup", from: p, rects: [] } : tool === "comment" ? { kind: "comment", from: p, rects: [] } : { kind: "stroke", points: [p] },
+    );
   };
 
   const onMove = (e: React.PointerEvent) => {
@@ -119,7 +122,9 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
       const from = g.from;
       void getEngine()
         .select(tab.id, page, from, p)
-        .then((sel: { rects: Rect[] }) => setGesture((cur) => (cur?.kind === "markup" && cur.from === from ? { ...cur, rects: sel.rects } : cur)))
+        .then((sel: { rects: Rect[] }) =>
+          setGesture((cur) => ((cur?.kind === "markup" || cur?.kind === "comment") && cur.from === from ? { ...cur, rects: sel.rects } : cur)),
+        )
         .finally(() => (pending.current = false));
     }
   };
@@ -135,6 +140,13 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
       if (moved(g.delta)) void moveAnnot(sel, g.delta[0], g.delta[1]);
     } else if (g.kind === "resize") {
       if (moved(g.delta)) void resizeAnnot(sel, resizeBox(g.annot.box ?? g.annot.rect, g.delta, g.annot.kind === "stamp"));
+    } else if (g.kind === "comment") {
+      if (moved([p[0] - g.from[0], p[1] - g.from[1]])) void addTextComment(tab.id, page, g.from, p);
+      else {
+        const hit = annotAt(annots, g.from, HIT_WIDTH / 2 / tab.zoom);
+        if (hit) appStore.getState().selectAnnot({ tabId: tab.id, page, id: hit.id });
+        else void addNote(tab.id, page, g.from);
+      }
     } else if (g.kind === "markup") {
       if (moved([p[0] - g.from[0], p[1] - g.from[1]])) void addAnnot(tab.id, page, { kind: markup.kind, from: g.from, to: p, color: markup.colors[markup.kind] });
     } else {
@@ -163,10 +175,11 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
       <svg className="annot-svg" width={transform.width} height={transform.height}>
         {tool === "select" && annots.map((a) => <AnnotHit key={a.id} annot={a} transform={transform} onPointerDown={onAnnotDown(a, "move")} />)}
         {frame && <rect className="annot-frame" x={frame[0]} y={frame[1]} width={frame[2] - frame[0]} height={frame[3] - frame[1]} />}
-        {gesture?.kind === "markup" &&
+        {(gesture?.kind === "markup" || gesture?.kind === "comment") &&
           gesture.rects.map((r, i) => {
             const [x0, y0, x1, y1] = transform.rectToDisplay(r);
-            return <rect key={i} x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={cssColor(markup.colors[markup.kind], 0.35)} />;
+            const color = gesture.kind === "comment" ? markup.colors.highlight : markup.colors[markup.kind];
+            return <rect key={i} x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={cssColor(color, 0.35)} />;
           })}
         {stroke && draw.shape === "pen" && <polyline points={pointsAttr(stroke, transform)} style={strokeStyle} />}
         {stroke && (draw.shape === "line" || draw.shape === "arrow") && <polyline points={pointsAttr([stroke[0], stroke[stroke.length - 1]], transform)} style={strokeStyle} />}
@@ -186,7 +199,7 @@ export function AnnotationLayer({ tab, page, transform }: { tab: DocTab; page: n
       {current && frame && tool === "select" && current.resizable && (
         <div className="edit-handle annot-handle" style={{ left: frame[2] - 6, top: frame[3] - 6 }} onPointerDown={onAnnotDown(current, "resize")} />
       )}
-      {current && frame && tool === "select" && !gesture && <AnnotCard annot={current} tab={tab} anchor={frame} pageWidth={transform.width} />}
+      {current && frame && (tool === "select" || tool === "comment") && !gesture && <AnnotCard annot={current} tab={tab} anchor={frame} pageWidth={transform.width} />}
     </div>
   );
 }
