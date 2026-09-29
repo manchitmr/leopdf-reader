@@ -1,7 +1,7 @@
-import { Bold, ImagePlus, MousePointer2, Redo2, Save, Type, Undo2 } from "lucide-react";
+import { Bold, ImagePlus, MousePointer2, Save, Type } from "lucide-react";
 import { useT } from "../i18n/useT";
 import { useApp, type DocTab } from "../state/store";
-import { addImageFromPicker, redo, saveTab, undo } from "./edit-actions";
+import { addImageFromPicker, saveTab } from "./edit-actions";
 
 const toHex = ([r, g, b]: [number, number, number]) => `#${[r, g, b].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;
 const fromHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
@@ -45,13 +45,6 @@ export function EditBar({ tab }: { tab: DocTab }) {
         <Bold size={18} />
       </button>
       <input type="color" aria-label={t("textColor")} title={t("textColor")} value={toHex(style.color)} onChange={(e) => setStyle({ color: fromHex(e.target.value) })} />
-      <div className="separator" />
-      <button className="icon-button" aria-label={t("undo")} title={t("undo")} disabled={!tab.canUndo} onClick={() => void undo(tab.id)}>
-        <Undo2 size={18} />
-      </button>
-      <button className="icon-button" aria-label={t("redo")} title={t("redo")} disabled={!tab.canRedo} onClick={() => void redo(tab.id)}>
-        <Redo2 size={18} />
-      </button>
       <div className="spacer" />
       {tool === "text" && <span className="muted">{t("clickToAddText")}</span>}
       <button className="primary-button" onClick={() => void saveTab(tab.id, { as: false })}>

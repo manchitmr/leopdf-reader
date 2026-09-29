@@ -5,6 +5,7 @@ import { EditBar } from "./EditBar";
 import { onEngineCrash } from "../engine/client";
 import { useT } from "../i18n/useT";
 import { onNativeDrop, onOpenFiles } from "../platform/native";
+import { saveAuthor, saveSignatures } from "../platform/prefs";
 import { saveRecent } from "../platform/recent";
 import { isPdfName, isTauri, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
@@ -19,6 +20,10 @@ import { SearchBar } from "./SearchBar";
 import { TabBar } from "./TabBar";
 import { TabErrorBoundary } from "./TabErrorBoundary";
 import { Toolbar } from "./Toolbar";
+import { ToolOptionsBar } from "./ToolOptionsBar";
+import { ToolRail } from "./ToolRail";
+import { AuthorDialog } from "./AuthorDialog";
+import { SignatureDialog } from "../sign/SignatureDialog";
 import { useShortcuts } from "./useShortcuts";
 import { Welcome } from "./Welcome";
 
@@ -33,6 +38,8 @@ function usePersistedSettings() {
           // Storage unavailable: settings last for this session only.
         }
         if (s.recent !== prev.recent) saveRecent(s.recent);
+        if (s.author !== prev.author && s.author !== null) saveAuthor(s.author);
+        if (s.signatures !== prev.signatures && !saveSignatures(s.signatures)) s.showNotice("signatureNotSaved");
       }),
     [],
   );
@@ -148,7 +155,7 @@ export function App() {
       }}
     >
       <Toolbar onPrint={onPrint} />
-      {tab?.status === "ready" && editMode && <EditBar tab={tab} />}
+      {tab?.status === "ready" && (editMode ? <EditBar tab={tab} /> : <ToolOptionsBar />)}
       <TabBar />
       <main className="workspace">
         {!tab && <Welcome />}
@@ -157,6 +164,7 @@ export function App() {
         {tab?.status === "error" && <DocMessage tone="error">{t(tab.error ?? "errorCorrupt", { name: tab.name })}</DocMessage>}
         {tab?.status === "ready" && (
           <TabErrorBoundary key={tab.id} fallback={<DocMessage tone="error">{t("errorCorrupt", { name: tab.name })}</DocMessage>}>
+            <ToolRail />
             <LeftPanel tab={tab} />
             <div className="doc-area">
               {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
@@ -171,6 +179,8 @@ export function App() {
       {busy && <div className="busy-overlay">{t(busy)}</div>}
       <Notice />
       <ConfirmDialog />
+      <AuthorDialog />
+      <SignatureDialog />
     </div>
   );
 }

@@ -22,6 +22,8 @@ export interface DocInfo {
   repaired: boolean;
   /** False for non-PDF documents and PDFs whose permissions forbid editing. */
   editable: boolean;
+  /** The PDF allows adding comments and markups. */
+  annotatable: boolean;
   /** The PDF contains digital signatures (editing invalidates them). */
   signed: boolean;
 }

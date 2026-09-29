@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { activeTab, appStore } from "../state/store";
+import { deleteSelectedAnnot } from "./annot-actions";
 import { deleteSelected, redo, requestClose, saveTab, undo } from "./edit-actions";
 import { openFromPicker } from "./Toolbar";
 
@@ -47,6 +48,11 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
         void deleteSelected();
         return;
       }
+      if ((e.key === "Delete" || e.key === "Backspace") && s.selectedAnnot?.tabId === tab.id) {
+        e.preventDefault();
+        void deleteSelectedAnnot();
+        return;
+      }
       const step = tab.viewMode === "two" ? 2 : 1;
       const pageKeys: Record<string, number | undefined> = {
         PageDown: tab.currentPage + step,
@@ -63,6 +69,8 @@ export function useShortcuts(handlers: { onPrint: () => void; onCopy: () => void
       } else if (e.key === "Escape") {
         s.setSelection(tab.id, null);
         s.setSearchOpen(false);
+        if (s.selectedAnnot) s.selectAnnot(null);
+        else if (!s.editMode && s.tool !== "select" && s.tool !== "hand") s.setTool("select");
       }
     };
     window.addEventListener("keydown", onKey);

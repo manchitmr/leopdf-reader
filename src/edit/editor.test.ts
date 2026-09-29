@@ -87,3 +87,32 @@ test("a failing edit is rolled back and leaves history unchanged", async () => {
   await expect(editor.updateText(0, "nope", "x", style)).rejects.toThrow("Unknown object nope");
   expect(editor.history()).toEqual({ canUndo: false, canRedo: false, dirty: false });
 });
+
+test("annotations share the journal: add, move, undo, delete, undo", async () => {
+  const r = await editor.addAnnotation(0, { kind: "rect", rect: [100, 500, 200, 560], color: [1, 0, 0], width: 2 }, "Leo");
+  const id = Number(r.id);
+  expect(r.history).toEqual({ canUndo: true, canRedo: false, dirty: true });
+  await editor.moveAnnotation(0, id, 10, 0);
+  expect(editor.listAnnotations(0)[0].box).toEqual([110, 500, 210, 560]);
+  editor.undo();
+  expect(editor.listAnnotations(0)[0].box).toEqual([100, 500, 200, 560]);
+  await editor.deleteAnnotation(0, id);
+  expect(editor.listAnnotations(0)).toEqual([]);
+  editor.undo();
+  expect(editor.listAnnotations(0)).toHaveLength(1);
+  const saved = new mupdf.PDFDocument(editor.save()).loadPage(0).getAnnotations();
+  expect(saved.map((a) => a.getType())).toEqual(["Square"]);
+});
+
+test("a highlight over no text changes nothing and says so", async () => {
+  const r = await editor.addAnnotation(0, { kind: "highlight", from: [300, 700], to: [500, 700], color: [1, 1, 0] }, "");
+  expect(r).toEqual({ history: { canUndo: false, canRedo: false, dirty: false }, empty: true });
+});
+
+test("comment text and colour changes are single undo steps", async () => {
+  const { id } = await editor.addAnnotation(0, { kind: "note", at: [300, 300], contents: "" }, "");
+  await editor.updateAnnotation(0, Number(id), { contents: "කොළඹ" });
+  expect(editor.listAnnotations(0)[0].contents).toBe("කොළඹ");
+  editor.undo();
+  expect(editor.listAnnotations(0)[0].contents).toBe("");
+});

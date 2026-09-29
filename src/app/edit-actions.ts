@@ -3,7 +3,9 @@ import type { EngineApi } from "../engine/engine-api";
 import type { EditResult } from "../edit/types";
 import { downloadPdf, pickImage, pickSavePath, writePdf } from "../platform/files";
 import { isTauri } from "../platform/sources";
-import { activeTab, appStore, getTab, type AppStore } from "../state/store";
+import { activeTab, appStore, getTab, type AppStore, type EditTool } from "../state/store";
+import { chooseTool } from "./annot-actions";
+import { flushComment, hasPendingComment } from "./comment-draft"; // functions only — the import cycle is safe
 import { closeDocument } from "./open-document";
 
 type Async<T> = T extends (...a: infer A) => infer R ? (...a: A) => Promise<Awaited<R>> : never;
@@ -71,10 +73,24 @@ export async function deleteSelected(deps: EditDeps = defaultEditDeps()): Promis
   await runEdit(sel.tabId, () => (sel.id ? deps.engine.deleteObject(sel.tabId, sel.page, sel.id) : deps.engine.deleteImage(sel.tabId, sel.page, sel.rect)), deps);
 }
 
-export const undo = (tabId: string, deps: EditDeps = defaultEditDeps()) => runEdit(tabId, () => deps.engine.undo(tabId), deps);
-export const redo = (tabId: string, deps: EditDeps = defaultEditDeps()) => runEdit(tabId, () => deps.engine.redo(tabId), deps);
+export function undo(tabId: string, deps: EditDeps = defaultEditDeps()) {
+  deps.store.getState().selectAnnot(null);
+  return runEdit(tabId, () => deps.engine.undo(tabId), deps);
+}
+
+export function redo(tabId: string, deps: EditDeps = defaultEditDeps()) {
+  deps.store.getState().selectAnnot(null);
+  return runEdit(tabId, () => deps.engine.redo(tabId), deps);
+}
+
+/** Stores text the user is still typing (comment card, inline text editor) before saving or closing. */
+async function flushTyping(deps: EditDeps): Promise<void> {
+  await flushComment();
+  if (deps.store.getState().inlineEditor) await commitInlineEditor(deps);
+}
 
 export async function saveTab(tabId: string, { as }: { as: boolean }, deps: EditDeps = defaultEditDeps()): Promise<boolean> {
+  await flushTyping(deps);
   const s = deps.store.getState();
   const tab = getTab(s, tabId);
   if (!tab) return false;
@@ -99,6 +115,7 @@ export async function saveTab(tabId: string, { as }: { as: boolean }, deps: Edit
 }
 
 export async function requestClose(tabId: string, deps: EditDeps = defaultEditDeps()): Promise<void> {
+  await flushTyping(deps);
   const tab = getTab(deps.store.getState(), tabId);
   if (tab?.dirty) deps.store.getState().setDialog({ kind: "unsaved", tabIds: [tabId], action: "close" });
   else await closeDocument(tabId, deps.store, deps.engine);
@@ -106,6 +123,13 @@ export async function requestClose(tabId: string, deps: EditDeps = defaultEditDe
 
 /** Returns true if the app may quit now; otherwise opens the unsaved-changes dialog. */
 export function requestQuit(deps: EditDeps = defaultEditDeps()): boolean {
+  if (hasPendingComment() || deps.store.getState().inlineEditor) {
+    // Store the typing first (it may make a tab dirty), then ask again; the window stays open meanwhile.
+    void flushTyping(deps).then(() => {
+      if (requestQuit(deps)) quitHandler.quit();
+    });
+    return false;
+  }
   const dirty = deps.store.getState().tabs.filter((t) => t.dirty).map((t) => t.id);
   if (dirty.length === 0) return true;
   deps.store.getState().setDialog({ kind: "unsaved", tabIds: dirty, action: "quit" });
@@ -122,9 +146,14 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
   if (!dialog || choice === "cancel") return;
   if (dialog.kind === "signed") {
     s.acknowledgeSigned(dialog.tabId);
-    s.setEditMode(true);
+    if ("tool" in dialog.then) await chooseTool(dialog.then.tool, deps);
+    else {
+      s.setEditMode(true);
+      s.setEditTool(dialog.then.edit);
+    }
     return;
   }
+  if (dialog.kind !== "unsaved") return;
   if (choice === "save") {
     for (const id of dialog.tabIds) if (!(await saveTab(id, { as: false }, deps))) return;
   }
@@ -132,7 +161,7 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
   else quitHandler.quit();
 }
 
-export async function enterEditMode(deps: EditDeps = defaultEditDeps()): Promise<void> {
+export async function enterEditMode(tool: EditTool = "select", deps: EditDeps = defaultEditDeps()): Promise<void> {
   const s = deps.store.getState();
   const tab = activeTab(s);
   if (!tab?.info) return;
@@ -141,8 +170,9 @@ export async function enterEditMode(deps: EditDeps = defaultEditDeps()): Promise
     return;
   }
   if (tab.info.signed && !tab.signedAcknowledged) {
-    s.setDialog({ kind: "signed", tabId: tab.id });
+    s.setDialog({ kind: "signed", tabId: tab.id, then: { edit: tool } });
     return;
   }
   s.setEditMode(true);
+  s.setEditTool(tool);
 }

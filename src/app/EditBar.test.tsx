@@ -11,7 +11,7 @@ beforeEach(() => {
   id = appStore.getState().addTab({ key: "/a.pdf", name: "a.pdf", path: "/a.pdf" }).id;
   appStore.getState().setOpenResult(id, {
     status: "ok",
-    info: { pageCount: 1, pages: [{ bounds: [0, 0, 600, 800], label: "1" }], outline: [], title: null, repaired: false, editable: true, signed: false },
+    info: { pageCount: 1, pages: [{ bounds: [0, 0, 600, 800], label: "1" }], outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true },
   });
 });
 afterEach(cleanup);
@@ -24,7 +24,6 @@ test("edit bar switches tools and style", () => {
   expect(appStore.getState().textStyle.bold).toBe(true);
   fireEvent.change(screen.getByLabelText("Font size"), { target: { value: "20" } });
   expect(appStore.getState().textStyle.size).toBe(20);
-  expect((screen.getByLabelText("Undo") as HTMLButtonElement).disabled).toBe(true);
 });
 
 test("unsaved dialog shows the file name and three choices", () => {

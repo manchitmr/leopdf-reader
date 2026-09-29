@@ -163,3 +163,56 @@ button, input, select { font: inherit; color: inherit; }
 .frame-action { position: absolute; top: -30px; left: 0; padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); cursor: pointer; white-space: nowrap; }
 .inline-editor { position: absolute; min-width: 120px; padding: 0 2px; border: 1px solid var(--accent); background: rgba(255, 255, 255, 0.9); resize: none; overflow: hidden; outline: none; white-space: pre; z-index: 4; }
 .dirty-dot { color: var(--accent); font-weight: 700; }
+.tool-rail { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; }
+.rail-tool {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 64px; padding: 6px 2px; border: none; border-radius: 8px;
+  background: none; color: inherit; cursor: pointer; font-size: 11px; line-height: 1.2; text-align: center;
+}
+.rail-tool:hover { background: var(--accent-soft); }
+.rail-tool.pressed { background: var(--accent-soft); color: var(--accent); }
+.rail-tool span { max-width: 100%; overflow-wrap: anywhere; }
+.swatches { display: flex; gap: 4px; }
+.swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--border); cursor: pointer; }
+.swatch.pressed { box-shadow: 0 0 0 2px var(--accent); }
+.signature-chip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.signature-chip.pressed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.signature-pick { padding: 2px 6px; border: none; border-radius: 6px 0 0 6px; background: #fff; cursor: pointer; }
+.signature-pick img { display: block; height: 24px; max-width: 120px; object-fit: contain; }
+.annot-layer { position: absolute; inset: 0; pointer-events: none; }
+.annot-svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.annot-hit { pointer-events: all; fill: transparent; cursor: pointer; }
+.annot-hit.stroke polyline { fill: none; stroke: transparent; pointer-events: stroke; }
+.annot-frame { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.annot-capture { position: absolute; inset: 0; pointer-events: auto; cursor: crosshair; }
+.annot-layer.tool-comment .annot-capture { cursor: copy; }
+.annot-handle { pointer-events: auto; }
+.signature-ghost { position: absolute; opacity: 0.7; pointer-events: none; }
+.annot-card {
+  position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 10px; pointer-events: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+}
+.annot-card-head { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.annot-card textarea {
+  width: 100%; box-sizing: border-box; resize: vertical; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
+  font-family: "Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif; font-size: 13px;
+}
+.annot-card-actions { display: flex; align-items: center; gap: 6px; }
+.comments { display: flex; flex-direction: column; gap: 8px; width: 240px; }
+.comments-name { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.comments-name input { height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.comments-page { margin: 8px 0 4px; font-size: 12px; font-weight: 600; }
+.comments-list { list-style: none; margin: 0; padding: 0; }
+.comment-item { display: flex; gap: 8px; width: 100%; padding: 6px; border: none; border-radius: 6px; background: none; cursor: pointer; text-align: left; color: inherit; }
+.comment-item:hover { background: var(--accent-soft); }
+.comment-body { display: flex; flex-direction: column; min-width: 0; }
+.comment-meta { font-size: 11px; }
+.comment-text { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: pre-wrap; }
+.signature-dialog { width: min(540px, 92vw); max-width: none; display: flex; flex-direction: column; gap: 10px; }
+.segmented { display: inline-flex; align-self: flex-start; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.segmented button { padding: 6px 14px; border: none; background: var(--panel); color: inherit; cursor: pointer; }
+.segmented button.pressed { background: var(--accent-soft); color: var(--accent); }
+.signature-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.signature-controls input:not([type]) { flex: 1; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.signature-controls button:not(.swatch) { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); cursor: pointer; }
+.signature-pad { width: 100%; border: 1px dashed var(--border); border-radius: 8px; background: #fff; touch-action: none; }
+.signature-pad.mode-draw { cursor: crosshair; }
