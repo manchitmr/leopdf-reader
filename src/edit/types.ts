@@ -1,4 +1,4 @@
-import type { Point, Rect } from "../engine/types";
+import type { Point, Quad, Rect } from "../engine/types";
 import type { Family } from "./fonts";
 
 export interface TextStyle {
@@ -38,4 +38,47 @@ export interface EditResult {
   id?: string;
   /** Characters that no bundled font can show (rendered as boxes). */
   missing?: string[];
+  /** The edit changed nothing (e.g. a highlight dragged over no text). */
+  empty?: boolean;
+}
+
+export type RGB = [number, number, number];
+
+export type AnnotKind = "highlight" | "underline" | "strikeout" | "ink" | "line" | "arrow" | "rect" | "oval" | "note" | "stamp" | "other";
+
+/** A PDF annotation as the UI sees it. Geometry is page space. */
+export interface Annot {
+  /** PDF object number — stable across undo/redo. */
+  id: number;
+  page: number;
+  kind: AnnotKind;
+  /** PDF /Subtype, e.g. "FreeText" for kind "other". */
+  subtype: string;
+  /** Visual bounds (includes the border); used for display and hit shapes. */
+  rect: Rect;
+  /** The stored /Rect for types that have one; move/resize use this. */
+  box: Rect | null;
+  quads?: Quad[];
+  /** Ink strokes; for line/arrow one two-point stroke. */
+  strokes?: Point[][];
+  color: RGB | null;
+  contents: string;
+  author: string;
+  /** Last modified, ms since epoch. */
+  modified: number | null;
+  movable: boolean;
+  resizable: boolean;
+}
+
+export type NewAnnot =
+  | { kind: "highlight" | "underline" | "strikeout"; from: Point; to: Point; color: RGB }
+  | { kind: "ink"; strokes: Point[][]; color: RGB; width: number }
+  | { kind: "line" | "arrow"; from: Point; to: Point; color: RGB; width: number }
+  | { kind: "rect" | "oval"; rect: Rect; color: RGB; width: number }
+  | { kind: "note"; at: Point; contents: string }
+  | { kind: "stamp"; rect: Rect; png: Uint8Array };
+
+export interface AnnotPatch {
+  contents?: string;
+  color?: RGB;
 }
