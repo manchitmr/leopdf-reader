@@ -129,7 +129,7 @@ export function Toolbar({ onPrint }: { onPrint: () => void }) {
         label={tab?.info && !tab.info.editable ? t("editNotAllowed") : t("editPdf")}
         pressed={s.editMode}
         disabled={!ready}
-        onClick={() => (s.editMode ? s.setEditMode(false) : void enterEditMode())}
+        onClick={() => (s.editMode ? s.setEditMode(false) : void enterEditMode("select"))}
       >
         <PenLine size={18} />
       </IconButton>

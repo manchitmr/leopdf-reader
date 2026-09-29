@@ -121,10 +121,10 @@ test("quitting with dirty tabs asks; clean state may quit immediately", async ()
 
 test("entering edit mode: disallowed PDFs show a notice; signed PDFs ask once", async () => {
   const locked = setup("/a.pdf", info({ editable: false }));
-  await enterEditMode(locked.deps);
+  await enterEditMode("select", locked.deps);
   expect(locked.store.getState()).toMatchObject({ editMode: false, notice: { key: "editNotAllowed" } });
   const signed = setup("/b.pdf", info({ signed: true }));
-  await enterEditMode(signed.deps);
+  await enterEditMode("select", signed.deps);
   expect(signed.store.getState().dialog).toEqual({ kind: "signed", tabId: signed.id, then: { edit: "select" } });
   await resolveDialog("save", signed.deps); // "Continue" maps to the primary choice
   expect(signed.store.getState().editMode).toBe(true);

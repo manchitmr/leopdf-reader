@@ -3,7 +3,8 @@ import type { EngineApi } from "../engine/engine-api";
 import type { EditResult } from "../edit/types";
 import { downloadPdf, pickImage, pickSavePath, writePdf } from "../platform/files";
 import { isTauri } from "../platform/sources";
-import { activeTab, appStore, getTab, type AppStore } from "../state/store";
+import { activeTab, appStore, getTab, type AppStore, type EditTool } from "../state/store";
+import { chooseTool } from "./annot-actions"; // functions only — the import cycle is safe
 import { closeDocument } from "./open-document";
 
 type Async<T> = T extends (...a: infer A) => infer R ? (...a: A) => Promise<Awaited<R>> : never;
@@ -71,8 +72,15 @@ export async function deleteSelected(deps: EditDeps = defaultEditDeps()): Promis
   await runEdit(sel.tabId, () => (sel.id ? deps.engine.deleteObject(sel.tabId, sel.page, sel.id) : deps.engine.deleteImage(sel.tabId, sel.page, sel.rect)), deps);
 }
 
-export const undo = (tabId: string, deps: EditDeps = defaultEditDeps()) => runEdit(tabId, () => deps.engine.undo(tabId), deps);
-export const redo = (tabId: string, deps: EditDeps = defaultEditDeps()) => runEdit(tabId, () => deps.engine.redo(tabId), deps);
+export function undo(tabId: string, deps: EditDeps = defaultEditDeps()) {
+  deps.store.getState().selectAnnot(null);
+  return runEdit(tabId, () => deps.engine.undo(tabId), deps);
+}
+
+export function redo(tabId: string, deps: EditDeps = defaultEditDeps()) {
+  deps.store.getState().selectAnnot(null);
+  return runEdit(tabId, () => deps.engine.redo(tabId), deps);
+}
 
 export async function saveTab(tabId: string, { as }: { as: boolean }, deps: EditDeps = defaultEditDeps()): Promise<boolean> {
   const s = deps.store.getState();
@@ -122,7 +130,11 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
   if (!dialog || choice === "cancel") return;
   if (dialog.kind === "signed") {
     s.acknowledgeSigned(dialog.tabId);
-    s.setEditMode(true);
+    if ("tool" in dialog.then) await chooseTool(dialog.then.tool, deps);
+    else {
+      s.setEditMode(true);
+      s.setEditTool(dialog.then.edit);
+    }
     return;
   }
   if (dialog.kind !== "unsaved") return;
@@ -133,7 +145,7 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
   else quitHandler.quit();
 }
 
-export async function enterEditMode(deps: EditDeps = defaultEditDeps()): Promise<void> {
+export async function enterEditMode(tool: EditTool = "select", deps: EditDeps = defaultEditDeps()): Promise<void> {
   const s = deps.store.getState();
   const tab = activeTab(s);
   if (!tab?.info) return;
@@ -142,8 +154,9 @@ export async function enterEditMode(deps: EditDeps = defaultEditDeps()): Promise
     return;
   }
   if (tab.info.signed && !tab.signedAcknowledged) {
-    s.setDialog({ kind: "signed", tabId: tab.id, then: { edit: "select" } });
+    s.setDialog({ kind: "signed", tabId: tab.id, then: { edit: tool } });
     return;
   }
   s.setEditMode(true);
+  s.setEditTool(tool);
 }
