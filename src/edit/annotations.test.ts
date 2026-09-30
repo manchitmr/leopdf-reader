@@ -229,3 +229,22 @@ test.each([0, 90, 180, 270] as const)("signature stamps stay upright on /Rotate 
   const [rr, , rb] = pixel(p, 210, 75);
   expect([lr > 200, lb < 60, rb > 200, rr < 60]).toEqual([true, true, true, true]);
 });
+
+test("a signature's transparent background stays transparent (not black), also after saving", () => {
+  // 60x20: fully transparent except an opaque red bar in the middle.
+  const pix = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, 60, 20], true);
+  const px = pix.getPixels();
+  px.fill(0); // (clear() would make the pixels opaque)
+  for (let y = 8; y < 12; y++) for (let x = 5; x < 55; x++) px.set([200, 0, 0, 255], y * pix.getStride() + x * 4);
+  addAnnotation(page, { kind: "stamp", rect: [50, 300, 350, 400], png: pix.asPNG().slice() }, "");
+  const colorAt = (doc: mupdf.PDFDocument, x: number, y: number) => {
+    const p = doc.loadPage(0).toPixmap(mupdf.Matrix.identity, mupdf.ColorSpace.DeviceRGB, false, true);
+    const i = Math.round(y) * p.getStride() + Math.round(x) * 3;
+    return Array.from(p.getPixels().slice(i, i + 3));
+  };
+  const saved = new mupdf.PDFDocument(pdf.saveToBuffer("").asUint8Array().slice());
+  for (const doc of [pdf, saved]) {
+    expect(colorAt(doc, 60, 305)).toEqual([255, 255, 255]); // page shows through
+    expect(colorAt(doc, 200, 350)).toEqual([200, 0, 0]); // ink
+  }
+});

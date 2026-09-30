@@ -1,8 +1,10 @@
+import { RotateCcw, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Point } from "../engine/types";
 import type { StringKey } from "../i18n/strings";
 import { useT } from "../i18n/useT";
-import { pickImage } from "../platform/files";
+import { isImageName, pickImage, readDroppedImage, toPngOrJpeg } from "../platform/files";
+import { onNativeDrop } from "../platform/native";
 import { appStore, useApp } from "../state/store";
 import { PAD_HEIGHT, PAD_WIDTH, drawImage, drawStrokes, drawTyped, exportSignature, prepareCanvas } from "./render-signature";
 
@@ -13,6 +15,7 @@ const MODES: { mode: Mode; label: StringKey }[] = [
   { mode: "image", label: "signImage" },
 ];
 const INKS = { black: "#111111", blue: "#1d3a8a" };
+const INK_RGB: Record<keyof typeof INKS, [number, number, number]> = { black: [17, 17, 17], blue: [29, 58, 138] };
 
 export function SignatureDialog() {
   const dialog = useApp((s) => s.dialog);
@@ -28,18 +31,50 @@ function SignaturePad() {
   const [family, setFamily] = useState<"sans" | "serif">("serif");
   const [image, setImage] = useState<Uint8Array | null>(null);
   const [whiten, setWhiten] = useState(true);
+  /** Photos: ink recolour ("original" keeps the photo's colours) and rotation in degrees (−180…180). */
+  const [photoInk, setPhotoInk] = useState<keyof typeof INKS | "original">("original");
+  const [angle, setAngle] = useState(0);
+  /** Adds degrees, wrapping into −180…180. */
+  const turn = (by: number) => setAngle((a) => ((((a + by + 180) % 360) + 360) % 360) - 180);
   const canvas = useRef<HTMLCanvasElement>(null);
+
+  const takeImage = (bytes: Uint8Array) => {
+    setMode("image");
+    setImage(bytes);
+    setAngle(0);
+  };
+  const unreadable = () => appStore.getState().showNotice("imageUnreadable");
+  // Dropping an image file anywhere on the app while this dialog is open uses it as the signature.
+  // (In the app, the OS hands over file paths; in a browser the drop event carries the file.)
+  useEffect(() => {
+    let unlisten = () => {};
+    let gone = false;
+    void onNativeDrop((paths) => {
+      const path = paths.find(isImageName);
+      if (path) void readDroppedImage(path).then(takeImage, unreadable);
+    }).then((u) => (gone ? u() : (unlisten = u)));
+    return () => {
+      gone = true;
+      unlisten();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = Array.from(e.dataTransfer.files).find((f) => isImageName(f.name));
+    if (file) void file.arrayBuffer().then((b) => toPngOrJpeg(new Uint8Array(b))).then(takeImage, unreadable);
+  };
   const drawing = useRef(false);
 
   useEffect(() => {
-    const ctx = canvas.current && prepareCanvas(canvas.current);
+    const ctx = canvas.current && prepareCanvas(canvas.current, mode === "image" ? 4 : 2);
     if (!ctx) return;
     let cancelled = false;
     const isCancelled = () => cancelled;
     if (mode === "draw") drawStrokes(ctx, strokes, INKS[ink]);
     else if (mode === "type") void drawTyped(ctx, name, family, INKS[ink], isCancelled);
     else if (image)
-      void drawImage(ctx, image, whiten, isCancelled).catch(() => {
+      void drawImage(ctx, image, { clean: whiten, ink: photoInk === "original" ? null : INK_RGB[photoInk], rotation: angle }, isCancelled).catch(() => {
         if (cancelled) return;
         setImage(null);
         appStore.getState().showNotice("imageUnreadable");
@@ -47,7 +82,7 @@ function SignaturePad() {
     return () => {
       cancelled = true;
     };
-  }, [mode, strokes, name, family, image, whiten, ink]);
+  }, [mode, strokes, name, family, image, whiten, ink, photoInk, angle]);
 
   const padPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const box = e.currentTarget.getBoundingClientRect();
@@ -66,7 +101,7 @@ function SignaturePad() {
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t("signatureTitle")}>
-      <div className="doc-message signature-dialog">
+      <div className="doc-message signature-dialog" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
         <h2>{t("signatureTitle")}</h2>
         <div className="segmented" role="tablist">
           {MODES.map((m) => (
@@ -86,10 +121,42 @@ function SignaturePad() {
         )}
         {mode === "image" && (
           <div className="signature-controls">
-            <button onClick={() => void pickImage().then((bytes) => bytes && setImage(bytes))}>{t("chooseImage")}</button>
+            <button
+              onClick={() =>
+                void pickImage()
+                  .then((bytes) => bytes && takeImage(bytes))
+                  .catch(unreadable)
+              }
+            >
+              {t("chooseImage")}
+            </button>
+            <span className="muted">{t("dropImageHint")}</span>
             <label>
               <input type="checkbox" checked={whiten} onChange={(e) => setWhiten(e.target.checked)} /> {t("removeWhite")}
             </label>
+          </div>
+        )}
+        {mode === "image" && image && (
+          <div className="signature-controls">
+            <button className="icon-button" aria-label={t("rotateLeft")} title={t("rotateLeft")} onClick={() => turn(-90)}>
+              <RotateCcw size={16} />
+            </button>
+            <button className="icon-button" aria-label={t("rotateRight")} title={t("rotateRight")} onClick={() => turn(90)}>
+              <RotateCw size={16} />
+            </button>
+            <label className="straighten">
+              {t("straighten")}
+              <input type="range" min={-180} max={180} step={1} value={angle} onChange={(e) => setAngle(Number(e.target.value))} onDoubleClick={() => setAngle(0)} />
+              <output>{angle}°</output>
+            </label>
+            {whiten && (
+              <div className="swatches" role="group" aria-label={t("inkColor")}>
+                <button className={`swatch custom-color ${photoInk === "original" ? "pressed" : ""}`} aria-label={t("originalColors")} title={t("originalColors")} aria-pressed={photoInk === "original"} onClick={() => setPhotoInk("original")} />
+                {(Object.keys(INKS) as (keyof typeof INKS)[]).map((k) => (
+                  <button key={k} className={`swatch ${photoInk === k ? "pressed" : ""}`} style={{ background: INKS[k] }} aria-label={INKS[k]} aria-pressed={photoInk === k} onClick={() => setPhotoInk(k)} />
+                ))}
+              </div>
+            )}
           </div>
         )}
         <canvas
