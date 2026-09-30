@@ -232,3 +232,6 @@ button, input, select { font: inherit; color: inherit; }
 .pdf-font { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .pdf-font.ok { color: #15803d; }
 .pdf-font.missing { color: #b45309; }
+.straighten { display: inline-flex; align-items: center; gap: 6px; }
+.straighten input { width: 160px; }
+.straighten output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }

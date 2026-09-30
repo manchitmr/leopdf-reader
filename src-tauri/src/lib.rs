@@ -74,10 +74,13 @@ fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
     write_pdf_atomic(Path::new(path.as_ref()), bytes)
 }
 
+/// Images that can be dropped onto the signature pad; the UI converts anything but PNG/JPEG to PNG.
+const IMAGE_EXTENSIONS: &[&str] = &[".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif", ".gif", ".bmp", ".tif", ".tiff"];
+
 #[tauri::command]
 fn read_image(path: String) -> Result<Response, String> {
-    if !has_extension(&path, &[".png", ".jpg", ".jpeg"]) {
-        return Err(format!("{path}: not a PNG or JPEG image"));
+    if !has_extension(&path, IMAGE_EXTENSIONS) {
+        return Err(format!("{path}: not a supported image"));
     }
     std::fs::read(&path).map(Response::new).map_err(|e| format!("{path}: {e}"))
 }

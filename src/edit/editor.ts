@@ -219,7 +219,11 @@ export class DocumentEditor {
 
   private op<T>(name: string, page: number, fn: (ctx: EditContext) => T): T {
     const ctx: EditContext = { pdf: this.pdf, page: this.pdf.loadPage(page), fonts: this.fonts };
-    return this.journaled(name, () => fn(ctx));
+    return this.journaled(name, () => {
+      const value = fn(ctx);
+      annots.restoreSignatures(ctx.page);
+      return value;
+    });
   }
 
   /** Runs `fn` as one undoable journal operation; a failure rolls it back completely. */

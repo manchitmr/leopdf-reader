@@ -1,19 +1,27 @@
 import type { Point } from "../engine/types";
 import type { SavedSignature } from "../platform/prefs";
 import { FAMILIES } from "../viewer/InlineTextEditor";
-import { inkBounds, whitenToTransparent } from "./signature-image";
+import { inkBounds, removeBackground } from "./signature-image";
 
-/** Signature pad size in CSS pixels; the canvas is 2× for sharp output. */
+/** Signature pad size in CSS pixels; the canvas is 2× (4× for photos, which carry finer detail) for sharp output. */
 export const PAD_WIDTH = 480;
 export const PAD_HEIGHT = 160;
-const SCALE = 2;
 
-export function prepareCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-  canvas.width = PAD_WIDTH * SCALE;
-  canvas.height = PAD_HEIGHT * SCALE;
+export function prepareCanvas(canvas: HTMLCanvasElement, scale = 2): CanvasRenderingContext2D | null {
+  canvas.width = PAD_WIDTH * scale;
+  canvas.height = PAD_HEIGHT * scale;
   const ctx = canvas.getContext("2d");
-  ctx?.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx?.setTransform(scale, 0, 0, scale, 0, 0);
   return ctx;
+}
+
+export interface ImageOptions {
+  /** Remove the paper behind the ink. */
+  clean: boolean;
+  /** Recolour the ink (RGB 0–255); null keeps the photo's colours. */
+  ink: [number, number, number] | null;
+  /** Clockwise rotation in degrees. */
+  rotation: number;
 }
 
 export function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Point[][], color: string): void {
@@ -45,17 +53,24 @@ export async function drawTyped(ctx: CanvasRenderingContext2D, text: string, fam
   ctx.fillText(text, 12, PAD_HEIGHT / 2);
 }
 
-/** A picked PNG/JPEG, fitted into the pad; optionally with its white background removed. Throws if unreadable. */
-export async function drawImage(ctx: CanvasRenderingContext2D, bytes: Uint8Array, whiten: boolean, cancelled: () => boolean): Promise<void> {
+/** A picked image, rotated and fitted into the pad, optionally with its paper removed and ink recoloured. Throws if unreadable. */
+export async function drawImage(ctx: CanvasRenderingContext2D, bytes: Uint8Array, options: ImageOptions, cancelled: () => boolean): Promise<void> {
   const bitmap = await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>]));
   if (cancelled()) return;
-  const scale = Math.min(PAD_WIDTH / bitmap.width, PAD_HEIGHT / bitmap.height);
-  const w = bitmap.width * scale;
-  const h = bitmap.height * scale;
-  ctx.drawImage(bitmap, (PAD_WIDTH - w) / 2, (PAD_HEIGHT - h) / 2, w, h);
-  if (whiten) {
+  const a = (options.rotation * Math.PI) / 180;
+  // Size of the rotated image's bounding box, fitted into the pad.
+  const bw = Math.abs(bitmap.width * Math.cos(a)) + Math.abs(bitmap.height * Math.sin(a));
+  const bh = Math.abs(bitmap.width * Math.sin(a)) + Math.abs(bitmap.height * Math.cos(a));
+  const scale = Math.min(PAD_WIDTH / bw, PAD_HEIGHT / bh);
+  ctx.save();
+  ctx.translate(PAD_WIDTH / 2, PAD_HEIGHT / 2);
+  ctx.rotate(a);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, (-bitmap.width * scale) / 2, (-bitmap.height * scale) / 2, bitmap.width * scale, bitmap.height * scale);
+  ctx.restore();
+  if (options.clean) {
     const data = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-    whitenToTransparent(data);
+    removeBackground(data, options.ink);
     ctx.putImageData(data, 0, 0);
   }
 }

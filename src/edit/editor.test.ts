@@ -134,3 +134,28 @@ test("bookmark edits share the journal", async () => {
   editor.undo();
   expect(editor.outline().map((n) => n.title)).toEqual(["Chapter One", "Chapter Two", "යාපනය"]);
 });
+
+test("a signature whose appearance MuPDF regenerated (red name box) gets its image back on the next edit", async () => {
+  const pix = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, 60, 20], true);
+  const px = pix.getPixels();
+  px.fill(0);
+  for (let y = 8; y < 12; y++) for (let x = 5; x < 55; x++) px.set([0, 0, 200, 255], y * pix.getStride() + x * 4);
+  const r = await editor.addAnnotation(0, { kind: "stamp", rect: [50, 300, 350, 400], png: pix.asPNG().slice() }, "me");
+  const drawsImage = () => {
+    const p = pdf.loadPage(0);
+    p.update();
+    const a = p.getAnnotations().find((x) => x.getObject().asIndirect() === Number(r.id))!;
+    const ap = a.getObject().get("AP");
+    return ap.isDictionary() && ap.get("N").readStream().asString().includes("Do");
+  };
+  expect(drawsImage()).toBe(true);
+  // Simulate MuPDF redrawing it as a default stamp (its name in a red box).
+  pdf.beginOperation("simulate");
+  const page = pdf.loadPage(0);
+  page.getAnnotations().find((x) => x.getObject().asIndirect() === Number(r.id))!.getObject().delete("AP");
+  page.update();
+  pdf.endOperation();
+  expect(drawsImage()).toBe(false);
+  await editor.updateAnnotation(0, Number(r.id), { contents: "signed" });
+  expect(drawsImage()).toBe(true);
+});

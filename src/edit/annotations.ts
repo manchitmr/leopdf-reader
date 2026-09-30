@@ -27,6 +27,32 @@ export class NoTextError extends Error {
 
 const idOf = (a: mupdf.PDFAnnotation) => a.getObject().asIndirect();
 const isOurs = (a: mupdf.PDFAnnotation) => a.getObject().get(OWN_KEY).asBoolean();
+/** Signature stamps keep a reference to their image here, so a lost appearance can be rebuilt. */
+const IMAGE_KEY = "LeoPDFImage";
+
+/** The first image XObject an appearance draws, if any. */
+function appearanceImage(a: mupdf.PDFAnnotation): mupdf.PDFObject | null {
+  const ap = a.getObject().get("AP");
+  if (!ap.isDictionary() || !ap.get("N").isStream()) return null;
+  const xobjects = ap.get("N").get("Resources").get("XObject");
+  let found: mupdf.PDFObject | null = null;
+  if (xobjects.isDictionary()) xobjects.forEach((v) => void (!found && v.get("Subtype").asName() === "Image" && (found = v)));
+  return found;
+}
+
+/**
+ * If MuPDF ever regenerates a LeoPDF signature's appearance (it would draw its default stamp: the name in
+ * a red box), put the signature image back. Call inside the edit's journal operation.
+ */
+export function restoreSignatures(page: mupdf.PDFPage): void {
+  page.update();
+  for (const a of page.getAnnotations()) {
+    const ref = a.getObject().get(IMAGE_KEY);
+    if (!isOurs(a) || !ref.isIndirect() || appearanceImage(a)) continue;
+    a.setStampImage(page._doc.loadImage(ref));
+    a.getObject().put(IMAGE_KEY, appearanceImage(a) ?? ref);
+  }
+}
 
 function kindOf(a: mupdf.PDFAnnotation): AnnotKind {
   const subtype = a.getType();
@@ -221,6 +247,8 @@ export function addAnnotation(page: mupdf.PDFPage, spec: NewAnnot, author: strin
       // Name first: setStampImage then replaces the icon's appearance with the image.
       a.setIcon(SIGNATURE_ICON);
       a.setStampImage(uprightImage(spec.png, pageRotation(page)));
+      page.update();
+      if (appearanceImage(a)) a.getObject().put(IMAGE_KEY, appearanceImage(a)!);
       break;
   }
   a.getObject().put(OWN_KEY, true);

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { appStore } from "../state/store";
 import { SignatureDialog } from "./SignatureDialog";
@@ -19,11 +19,20 @@ test("the dialog offers Draw, Type and Image; Save waits for content", () => {
   expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole("tab", { name: "Image" }));
   expect(screen.getByRole("button", { name: "Choose image…" })).toBeTruthy();
-  expect((screen.getByLabelText("Remove white background") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Remove paper background") as HTMLInputElement).checked).toBe(true);
 });
 
 test("Cancel closes the dialog without saving", () => {
   render(<SignatureDialog />);
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(appStore.getState()).toMatchObject({ dialog: null, signatures: [] });
+});
+
+test("dropping an image on the dialog switches to Image mode with it", async () => {
+  render(<SignatureDialog />);
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]);
+  const file = new File([png], "signature.png", { type: "image/png" });
+  fireEvent.drop(screen.getByRole("dialog").firstElementChild!, { dataTransfer: { files: [file] } });
+  await waitFor(() => expect(screen.getByRole("tab", { name: "Image" }).getAttribute("aria-selected")).toBe("true"));
+  expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
 });
