@@ -74,6 +74,17 @@ fn write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
     write_pdf_atomic(Path::new(path.as_ref()), bytes)
 }
 
+/// Images that can be dropped onto the signature pad; the UI converts anything but PNG/JPEG to PNG.
+const IMAGE_EXTENSIONS: &[&str] = &[".png", ".jpg", ".jpeg", ".webp", ".heic", ".heif", ".gif", ".bmp", ".tif", ".tiff"];
+
+#[tauri::command]
+fn read_image(path: String) -> Result<Response, String> {
+    if !has_extension(&path, IMAGE_EXTENSIONS) {
+        return Err(format!("{path}: not a supported image"));
+    }
+    std::fs::read(&path).map(Response::new).map_err(|e| format!("{path}: {e}"))
+}
+
 #[tauri::command]
 fn read_file(path: String) -> Result<Response, String> {
     read_pdf_bytes(&path).map(Response::new)
@@ -105,7 +116,7 @@ pub fn run() {
             queue_files(app.handle(), pdf_args(std::env::args()));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files, write_file, fonts::list_fonts, fonts::read_font])
+        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files, write_file, read_image, fonts::list_fonts, fonts::read_font])
         .build(tauri::generate_context!())
         .expect("error while building LeoPDF Reader");
 

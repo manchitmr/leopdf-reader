@@ -34,6 +34,14 @@ test("with an ink colour the kept pixels are recoloured; a blank photo is left a
   expect(blank.data[3]).toBe(255);
 });
 
+test("a WhatsApp JPEG of a transparent signature (black background) keeps the strokes, recoloured to black ink", () => {
+  const px = pixels(20, 5, [0, 0, 0, 255]); // black where the PNG was transparent
+  for (let x = 4; x < 16; x++) set(px, x, 2, [230, 230, 240, 255]); // light strokes
+  removeBackground(px);
+  expect(px.data[3]).toBe(0); // background gone
+  expect(Array.from(px.data.slice((2 * 20 + 8) * 4, (2 * 20 + 8) * 4 + 4))).toEqual([17, 17, 17, 255]); // stroke, now black
+});
+
 test("ink bounds are padded, clamped, and null for an empty pad", () => {
   const px = pixels(100, 50, [0, 0, 0, 0]);
   expect(inkBounds(px)).toBeNull();

@@ -43,6 +43,13 @@ export async function toPngOrJpeg(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
+export const isImageName = (name: string) => /\.(png|jpe?g|webp|hei[cf]|gif|bmp|tiff?)$/i.test(name);
+
+/** An image file dropped onto the app (a path from the OS), as PNG or JPEG. Throws if unreadable. */
+export async function readDroppedImage(path: string): Promise<Uint8Array> {
+  return toPngOrJpeg(new Uint8Array(await invoke<ArrayBuffer>("read_image", { path })));
+}
+
 /** Picks an image and returns it as PNG or JPEG; null if cancelled. Throws if the image can't be read. */
 export async function pickImage(): Promise<Uint8Array | null> {
   const bytes = await pickRawImage();

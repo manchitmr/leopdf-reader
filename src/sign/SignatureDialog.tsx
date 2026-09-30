@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Point } from "../engine/types";
 import type { StringKey } from "../i18n/strings";
 import { useT } from "../i18n/useT";
-import { pickImage } from "../platform/files";
+import { isImageName, pickImage, readDroppedImage, toPngOrJpeg } from "../platform/files";
+import { onNativeDrop } from "../platform/native";
 import { appStore, useApp } from "../state/store";
 import { PAD_HEIGHT, PAD_WIDTH, drawImage, drawStrokes, drawTyped, exportSignature, prepareCanvas } from "./render-signature";
 
@@ -35,6 +36,34 @@ function SignaturePad() {
   const [quarter, setQuarter] = useState(0);
   const [tilt, setTilt] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
+
+  const takeImage = (bytes: Uint8Array) => {
+    setMode("image");
+    setImage(bytes);
+    setQuarter(0);
+    setTilt(0);
+  };
+  const unreadable = () => appStore.getState().showNotice("imageUnreadable");
+  // Dropping an image file anywhere on the app while this dialog is open uses it as the signature.
+  // (In the app, the OS hands over file paths; in a browser the drop event carries the file.)
+  useEffect(() => {
+    let unlisten = () => {};
+    let gone = false;
+    void onNativeDrop((paths) => {
+      const path = paths.find(isImageName);
+      if (path) void readDroppedImage(path).then(takeImage, unreadable);
+    }).then((u) => (gone ? u() : (unlisten = u)));
+    return () => {
+      gone = true;
+      unlisten();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = Array.from(e.dataTransfer.files).find((f) => isImageName(f.name));
+    if (file) void file.arrayBuffer().then((b) => toPngOrJpeg(new Uint8Array(b))).then(takeImage, unreadable);
+  };
   const drawing = useRef(false);
 
   useEffect(() => {
@@ -72,7 +101,7 @@ function SignaturePad() {
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={t("signatureTitle")}>
-      <div className="doc-message signature-dialog">
+      <div className="doc-message signature-dialog" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
         <h2>{t("signatureTitle")}</h2>
         <div className="segmented" role="tablist">
           {MODES.map((m) => (
@@ -95,17 +124,13 @@ function SignaturePad() {
             <button
               onClick={() =>
                 void pickImage()
-                  .then((bytes) => {
-                    if (!bytes) return;
-                    setImage(bytes);
-                    setQuarter(0);
-                    setTilt(0);
-                  })
-                  .catch(() => appStore.getState().showNotice("imageUnreadable"))
+                  .then((bytes) => bytes && takeImage(bytes))
+                  .catch(unreadable)
               }
             >
               {t("chooseImage")}
             </button>
+            <span className="muted">{t("dropImageHint")}</span>
             <label>
               <input type="checkbox" checked={whiten} onChange={(e) => setWhiten(e.target.checked)} /> {t("removeWhite")}
             </label>
