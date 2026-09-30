@@ -1,6 +1,5 @@
 import * as mupdf from "mupdf";
 import type { LoadedFont } from "./font-registry";
-import type { FontKey } from "./fonts";
 import type { ShapedGlyph } from "./shaper";
 import { utf16Hex } from "./text-writer";
 
@@ -24,6 +23,30 @@ export function toUnicodeCMap(map: Map<number, string>): string {
   ].join("\n");
 }
 
+/** Each bundled font as a PDF font object in a scratch document, built once and copied into documents. */
+const scratch = new WeakMap<LoadedFont, mupdf.PDFObject>();
+
+/**
+ * Copies the font into `pdf`. Not `pdf.addFont`: MuPDF caches that per document, and after an undo
+ * removed the font objects the cache still hands back their (now empty) object number.
+ */
+function embedFont(pdf: mupdf.PDFDocument, font: LoadedFont): mupdf.PDFObject {
+  let ref = scratch.get(font);
+  if (!ref) {
+    ref = new mupdf.PDFDocument().addFont(font.mu);
+    scratch.set(font, ref);
+  }
+  return pdf.graftObject(ref);
+}
+
+/** A PDF name for the font resource: bundled keys as they are, installed fonts as a hash of their path. */
+function resourceName(key: string): string {
+  if (!key.startsWith("face:")) return `LeoF-${key}`;
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+  return `LeoF-face-${h.toString(36)}`;
+}
+
 interface Embedded {
   font: LoadedFont;
   ref: mupdf.PDFObject;
@@ -36,14 +59,14 @@ interface Embedded {
 
 /** Embeds bundled fonts into one document and keeps their ToUnicode maps in step with what was written. */
 export class EmbeddedFonts {
-  private fonts = new Map<FontKey, Embedded>();
+  private fonts = new Map<string, Embedded>();
 
   constructor(private readonly pdf: mupdf.PDFDocument) {}
 
   use(font: LoadedFont) {
     let e = this.fonts.get(font.key);
     if (!e) {
-      e = { font, ref: this.pdf.addFont(font.mu), resourceName: `LeoF-${font.key}`, natural: new Map(), toUnicode: new Map(), dirty: true };
+      e = { font, ref: embedFont(this.pdf, font), resourceName: resourceName(font.key), natural: new Map(), toUnicode: new Map(), dirty: true };
       this.fonts.set(font.key, e);
     }
     const entry = e;

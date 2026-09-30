@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import type { EditResult, HistoryState } from "../edit/types";
-import type { DocInfo } from "../engine/types";
+import type { DocInfo, Point, Rect } from "../engine/types";
 import { createAppStore, getTab } from "../state/store";
 import { registerCommentDraft } from "./comment-draft";
 import { commitInlineEditor, enterEditMode, requestClose, requestQuit, resolveDialog, saveTab, type EditDeps } from "./edit-actions";
@@ -17,6 +17,7 @@ function setup(path: string | null = "/docs/a.pdf", docInfo = info()) {
   store.getState().setOpenResult(id, { status: "ok", info: docInfo });
   const engine = {
     addText: vi.fn(async (): Promise<EditResult> => ({ history: dirty, id: "t1" })),
+    replaceLine: vi.fn(async (): Promise<EditResult> => ({ history: dirty, id: "t1" })),
     updateText: vi.fn(async (): Promise<EditResult> => ({ history: dirty, id: "t1" })),
     deleteObject: vi.fn(async (): Promise<EditResult> => ({ history: dirty })),
     deleteImage: vi.fn(async (): Promise<EditResult> => ({ history: dirty })),
@@ -54,6 +55,32 @@ test("committing empty text for an existing object deletes it; for a new one doe
   store.getState().openInlineEditor({ tabId: id, page: 0, origin: [10, 20], objectId: null, text: "", style: store.getState().textStyle });
   await commitInlineEditor(deps);
   expect(engine.addText).not.toHaveBeenCalled();
+});
+
+test("editing an original line replaces it only when something changed, and explains refusals", async () => {
+  const { store, id, engine, deps } = setup();
+  const style = store.getState().textStyle;
+  const line = { rect: [10, 10, 90, 24] as Rect, origin: [10, 20] as Point, text: "ගාල්ල", chars: 5, style, maxRight: 200, fontName: "IskoolaPota", fontSize: 12 };
+  const open = (text: string) => store.getState().openInlineEditor({ tabId: id, page: 0, origin: line.origin, objectId: null, line, text, style });
+
+  open("ගාල්ල");
+  await commitInlineEditor(deps);
+  expect(engine.replaceLine).not.toHaveBeenCalled();
+
+  open("මාතර");
+  await commitInlineEditor(deps);
+  expect(engine.replaceLine).toHaveBeenCalledWith(id, 0, line, "මාතර", style);
+  expect(store.getState().notice).toBeNull();
+
+  engine.replaceLine.mockResolvedValueOnce({ history: clean, refused: "overlap" });
+  open("මාතර");
+  await commitInlineEditor(deps);
+  expect(store.getState().notice?.key).toBe("lineOverlap");
+
+  engine.replaceLine.mockResolvedValueOnce({ history: dirty, id: "t2", overflow: true });
+  open("මාතර දිස්ත්‍රික්කය");
+  await commitInlineEditor(deps);
+  expect(store.getState().notice?.key).toBe("linePastColumn");
 });
 
 test("save writes to the tab's path and clears dirty", async () => {

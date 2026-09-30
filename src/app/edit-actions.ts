@@ -46,7 +46,13 @@ export async function commitInlineEditor(deps: EditDeps = defaultEditDeps()): Pr
   if (!ed) return;
   s.closeInlineEditor();
   const empty = ed.text.trim().length === 0;
-  if (ed.objectId) {
+  if (ed.line) {
+    const line = ed.line;
+    if (ed.text === line.text && JSON.stringify(ed.style) === JSON.stringify(line.style)) return;
+    const result = await runEdit(ed.tabId, () => deps.engine.replaceLine(ed.tabId, ed.page, line, empty ? "" : ed.text, ed.style), deps);
+    if (result?.refused) s.showNotice("lineOverlap");
+    else if (result?.overflow) s.showNotice("linePastColumn");
+  } else if (ed.objectId) {
     await runEdit(ed.tabId, () => (empty ? deps.engine.deleteObject(ed.tabId, ed.page, ed.objectId!) : deps.engine.updateText(ed.tabId, ed.page, ed.objectId!, ed.text, ed.style)), deps);
   } else if (!empty) {
     await runEdit(ed.tabId, () => deps.engine.addText(ed.tabId, ed.page, ed.origin, ed.text, ed.style), deps);

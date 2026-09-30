@@ -1,4 +1,6 @@
-import { wrap, type Remote } from "comlink";
+import { proxy, wrap, type Remote } from "comlink";
+import { readFontFile } from "../platform/fonts";
+import { isTauri } from "../platform/sources";
 import type { EngineApi } from "./engine-api";
 
 let engine: Remote<EngineApi> | null = null;
@@ -14,6 +16,8 @@ export function getEngine(): Remote<EngineApi> {
       crashListeners.forEach((listener) => listener());
     });
     engine = wrap<EngineApi>(worker);
+    // The worker can't call Tauri; it reads installed fonts through this main-thread function.
+    if (isTauri()) void engine.setFaceSource(proxy(readFontFile));
   }
   return engine;
 }

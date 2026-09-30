@@ -34,6 +34,16 @@ test("the rail picks tools and shows which one is active", async () => {
   await waitFor(() => expect(appStore.getState()).toMatchObject({ editMode: false, tool: "select" }));
 });
 
+test("the hand tool is on the rail and toggles without leaving Edit mode", () => {
+  render(<ToolRail />);
+  appStore.getState().setEditMode(true);
+  fireEvent.click(screen.getByRole("button", { name: "Hand" }));
+  expect(appStore.getState()).toMatchObject({ tool: "hand", editMode: true });
+  expect(screen.getByRole("button", { name: "Hand" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Hand" }));
+  expect(appStore.getState().tool).toBe("select");
+});
+
 test("the options bar changes markup kind and colour, draw shape and thickness", () => {
   appStore.getState().setTool("markup");
   const { rerender } = render(<ToolOptionsBar />);

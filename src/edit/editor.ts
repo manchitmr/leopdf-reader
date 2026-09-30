@@ -7,11 +7,12 @@ import {
   addImageObject, addTextObject, defaultImageRect, deleteObject, listObjects, moveObject, replaceObjectImage, resizeObject,
   updateTextObject, type EditContext,
 } from "./page-objects";
+import { fitSize, listLines, OverlapError, removeLineText } from "./lines";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
 import * as annots from "./annotations";
 import * as bookmarks from "./bookmarks";
 import type { OutlineNode } from "../engine/types";
-import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
+import type { Annot, AnnotPatch, EditableLine, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
 
 /** Edits one PDF document. Every change is one journal operation, so undo/redo cover it. */
 export class DocumentEditor {
@@ -37,6 +38,34 @@ export class DocumentEditor {
 
   listImages(page: number): ExistingImage[] {
     return listExistingImages(this.pdf.loadPage(page));
+  }
+
+  /** Original text lines, with the size set so the bundled font spans the same width as the original. */
+  async listLines(page: number): Promise<EditableLine[]> {
+    const lines = listLines(this.pdf.loadPage(page));
+    for (const line of lines) {
+      if (line.locked) continue;
+      const [shaped] = await this.shape(line.text, line.style);
+      line.style.size = fitSize(line.style.size, shaped.width, line.rect[2] - line.origin[0]);
+    }
+    return lines;
+  }
+
+  /** Replaces an original line with new text (a LeoPDF text object on the same baseline); empty text just removes it. */
+  async replaceLine(page: number, line: EditableLine, text: string, style: TextStyle): Promise<EditResult> {
+    const lines = text ? await this.shape(text, style) : [];
+    let id: string | undefined;
+    try {
+      id = this.op("Edit text", page, (ctx) => {
+        removeLineText(ctx.page, line);
+        return text ? addTextObject(ctx, line.origin, text, style, lines) : undefined;
+      });
+    } catch (e) {
+      if (e instanceof OverlapError) return { ...this.result(), refused: "overlap" };
+      throw e;
+    }
+    const right = line.origin[0] + Math.max(0, ...lines.map((l) => l.width));
+    return { ...this.result(id, lines), ...(right > line.maxRight + 1 ? { overflow: true } : {}) };
   }
 
   async addText(page: number, origin: Point, text: string, style: TextStyle): Promise<EditResult> {

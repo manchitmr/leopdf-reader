@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { getEngine } from "../engine/client";
 import type { Point, Rect } from "../engine/types";
-import type { ExistingImage, PageObject } from "../edit/types";
+import type { EditableLine, ExistingImage, PageObject } from "../edit/types";
 import { commitInlineEditor, replaceSelectedImage, runEdit } from "../app/edit-actions";
 import { useT } from "../i18n/useT";
 import { appStore, useApp, type DocTab } from "../state/store";
 import type { PageTransform } from "./geometry";
 import { InlineTextEditor } from "./InlineTextEditor";
+import { findInstalled, listSystemFonts } from "../platform/fonts";
 
 interface Frame {
   id: string | null;
@@ -23,6 +24,7 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
   const selected = useApp((s) => s.selected);
   const editor = useApp((s) => s.inlineEditor);
   const [frames, setFrames] = useState<Frame[]>([]);
+  const [lines, setLines] = useState<EditableLine[]>([]);
   const [drag, setDrag] = useState<Drag>(null);
   const layer = useRef<HTMLDivElement>(null);
 
@@ -39,6 +41,33 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
       cancelled = true;
     };
   }, [tab.id, page, tab.revision]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (tool === "select") void getEngine().listLines(tab.id, page).then((l: EditableLine[]) => !cancelled && setLines(l));
+    else setLines([]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tab.id, page, tab.revision, tool]);
+
+  // Opens on click, not pointerdown: the pointerdown's default focus change would blur (and so commit) the new editor.
+  // An editor already open on another line is committed by that same blur first.
+  const onLineClick = (line: EditableLine) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const s = appStore.getState();
+    if (line.locked) {
+      s.showNotice(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode");
+      return;
+    }
+    // Same font installed → write with it at the original size; otherwise the fitted Noto style.
+    void listSystemFonts().then((fonts) => {
+      const face = findInstalled(fonts, line.fontName, line.style.bold, !!line.style.italic);
+      const style = face ? { ...line.style, face, size: line.fontSize } : line.style;
+      // `line.style` becomes the style it opened with, so committing it untouched changes nothing.
+      appStore.getState().openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line: { ...line, style }, text: line.text, style });
+    });
+  };
 
   const pagePoint = (e: React.PointerEvent): Point => {
     const box = layer.current!.getBoundingClientRect();
@@ -99,6 +128,20 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
 
   return (
     <div ref={layer} className={`edit-layer tool-${tool}`} onPointerDown={onLayerDown} onPointerMove={onMove} onPointerUp={onUp}>
+      {lines.map((line, i) => {
+        if (editor?.line?.rect === line.rect) return null;
+        const [x0, y0, x1, y1] = transform.rectToDisplay(line.rect);
+        return (
+          <div
+            key={`line-${i}`}
+            className={`edit-line ${line.locked ? "locked" : ""}`}
+            style={{ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }}
+            title={line.locked ? t(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode") : t("editLine")}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onLineClick(line)}
+          />
+        );
+      })}
       {frames.map((frame, i) => {
         const moving = drag?.frame === frame ? drag : null;
         const d = moving?.mode === "move" ? moving.delta : [0, 0];

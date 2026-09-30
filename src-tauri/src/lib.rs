@@ -1,3 +1,5 @@
+mod fonts;
+
 use std::io::Write;
 use std::path::Path;
 use std::sync::Mutex;
@@ -106,11 +108,12 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .manage(PendingFiles::default())
+        .manage(fonts::FontCache::default())
         .setup(|app| {
             queue_files(app.handle(), pdf_args(std::env::args()));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files, write_file, read_image])
+        .invoke_handler(tauri::generate_handler![read_file, print_window, take_pending_files, write_file, read_image, fonts::list_fonts, fonts::read_font])
         .build(tauri::generate_context!())
         .expect("error while building LeoPDF Reader");
 

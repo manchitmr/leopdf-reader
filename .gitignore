@@ -7,3 +7,4 @@ target/
 generated-images/
 src-tauri/target/
 src-tauri/gen/
+Samples/

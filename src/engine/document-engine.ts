@@ -1,9 +1,9 @@
 import * as mupdf from "mupdf";
 import { DocumentEditor } from "../edit/editor";
-import { FontRegistry, type FontSource } from "../edit/font-registry";
+import { FontRegistry, type FaceSource, type FontSource } from "../edit/font-registry";
 import { listAnnotations } from "../edit/annotations";
 import { listOutline } from "../edit/bookmarks";
-import type { Annot, AnnotPatch, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
+import type { Annot, AnnotPatch, EditableLine, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
 
@@ -54,6 +54,11 @@ export class DocumentEngine {
 
   constructor(options: { fontSource?: FontSource } = {}) {
     this.fonts = new FontRegistry(options.fontSource ?? noFonts);
+  }
+
+  /** How the worker reads installed font files: the app passes a function that asks the Rust side. */
+  setFaceSource(source: FaceSource): void {
+    this.fonts.faceSource = source;
   }
 
   open(docId: string, bytes: Uint8Array): OpenResult {
@@ -139,6 +144,8 @@ export class DocumentEngine {
 
   addText = (docId: string, page: number, origin: Point, text: string, style: TextStyle) => this.edit(docId, (e) => e.addText(page, origin, text, style));
   updateText = (docId: string, page: number, id: string, text: string, style: TextStyle) => this.edit(docId, (e) => e.updateText(page, id, text, style));
+  replaceLine = (docId: string, page: number, line: EditableLine, text: string, style: TextStyle) =>
+    this.edit(docId, (e) => e.replaceLine(page, line, text, style));
   moveObject = (docId: string, page: number, id: string, dx: number, dy: number) => this.edit(docId, (e) => e.moveObject(page, id, dx, dy));
   resizeObject = (docId: string, page: number, id: string, rect: Rect) => this.edit(docId, (e) => e.resizeObject(page, id, rect));
   deleteObject = (docId: string, page: number, id: string) => this.edit(docId, (e) => e.deleteObject(page, id));
@@ -183,6 +190,10 @@ export class DocumentEngine {
 
   listObjects(docId: string, page: number): PageObject[] {
     return this.editor(docId).listObjects(page);
+  }
+
+  listLines(docId: string, page: number): Promise<EditableLine[]> {
+    return this.editor(docId).listLines(page);
   }
 
   listImages(docId: string, page: number): ExistingImage[] {

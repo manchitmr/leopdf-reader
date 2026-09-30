@@ -52,6 +52,13 @@ test("undo after font embed, more edits, then save still produces a valid file",
   expect(text(bytes)).toContain("Hello world");
 });
 
+test("undo removes an embedded font; the same font can be used again afterwards", async () => {
+  await editor.addText(0, [72, 400], "කොළඹ", style);
+  editor.undo();
+  await editor.addText(0, [72, 400], "ගාල්ල", style);
+  expect(text(editor.save())).toContain("ගාල්ල");
+});
+
 test("save then markSaved clears dirty; a later edit makes it dirty again", async () => {
   await editor.addText(0, [72, 400], "Jaffna", style);
   editor.save();

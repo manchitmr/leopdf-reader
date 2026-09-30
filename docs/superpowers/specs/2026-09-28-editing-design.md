@@ -140,6 +140,14 @@ Noto Sans / Noto Serif × Regular / Bold for Latin, Sinhala, Tamil (12 TTF files
 - **E2 build:** line finding, legacy/garbled locking, line replacement with style matching.
 - Each ends with Windows + macOS test installers via the "Build installers" workflow.
 
+## 8a. E2 findings from real documents (2026-09-30)
+Checked against 38 owner-supplied Sinhala/Tamil PDFs (Word, PowerPoint, InDesign, Illustrator, Chrome):
+- **Most are legacy fonts** (FM*, DL-*, Abhaya/Basuru/Derana/A-KELANI, SINHAMethsara, Kalaham, Bamini/Baamini, Tharmini, Kamalam, RAVIB …): these lines are locked. A line is never locked if its text contains real Sinhala/Tamil code points, whatever the font is called (Apple's "Sinhala MN", "Abhaya Libre" are Unicode).
+- **Word/PowerPoint (Iskoola Pota) extract in visual order** ("ෙසෟඛ්‍ය"): pre-base vowel signs are moved back after their consonant cluster and two-part signs joined, for fonts that show a word-initial pre-base sign on the page. Stray spaces before vowel signs and a doubled kombuva ("පෙෝ") are cleaned up. Some glyph→Unicode maps are simply wrong (Latha "இலங்ககயர்"); the user corrects those in the editor.
+- **Size:** instead of x-height matching, the Noto size is chosen so the original text spans the original line width (clamped 0.7–1.15×); Times 12 → Noto Serif ≈10.3.
+- **Overlap:** big background letters / rotated letters overlap many lines; those edits are refused with a message and nothing changes.
+- A replaced line becomes an ordinary LeoPDF text object (movable, re-editable).
+
 ## 9. Open questions
 - Exact list of legacy font names to lock (gather from real Sri Lankan documents; start with FM*, DL-*, Bamini, Kaputa, Thibus).
 - Whether to also embed a Serif Sinhala font style closer to Iskoola Pota (Noto Serif Sinhala is the default).

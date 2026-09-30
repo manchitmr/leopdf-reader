@@ -4,6 +4,8 @@ import type { RGB } from "../edit/types";
 export const MARKUP_COLORS: RGB[] = [[1, 0.92, 0.23], [0.49, 0.87, 0.35], [0.35, 0.72, 1], [1, 0.55, 0.8], [0.94, 0.27, 0.27]];
 /** Red, blue, black, green, orange. */
 export const DRAW_COLORS: RGB[] = [[0.86, 0.15, 0.15], [0.15, 0.39, 0.92], [0, 0, 0], [0.09, 0.64, 0.29], [0.98, 0.45, 0.09]];
+/** Black, dark grey, red, blue, green. */
+export const TEXT_COLORS: RGB[] = [[0, 0, 0], [0.33, 0.33, 0.33], [0.86, 0.15, 0.15], [0.15, 0.39, 0.92], [0.09, 0.64, 0.29]];
 export const DRAW_WIDTHS = [1, 2, 4, 8];
 
 export const toHex = (c: RGB) => `#${c.map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;

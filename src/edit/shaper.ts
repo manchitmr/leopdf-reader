@@ -34,8 +34,14 @@ export interface ShapedLine {
 
 const SCRIPTS: Script[] = ["latin", "sinhala", "tamil"];
 
+const SAMPLE: Record<Script, string> = { latin: "a", sinhala: "\u0D85", tamil: "\u0B85" };
+
+/** The font for each script: the chosen installed font where it has that script, else bundled Noto. */
 export async function loadStyleFonts(registry: FontRegistry, style: TextStyle): Promise<Record<Script, LoadedFont>> {
-  const fonts = await Promise.all(SCRIPTS.map((s) => registry.get(fontKey(s, style.family, style.bold))));
+  const face = style.face ? await registry.face(style.face) : null;
+  const fonts = await Promise.all(
+    SCRIPTS.map((s) => (face?.hasChar(SAMPLE[s]) ? face : registry.get(fontKey(s, style.family, style.bold)))),
+  );
   return { latin: fonts[0], sinhala: fonts[1], tamil: fonts[2] };
 }
 

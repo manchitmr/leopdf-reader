@@ -1,5 +1,5 @@
 import {
-  ChevronLeft, ChevronRight, FolderOpen, Hand, Monitor, Moon, Printer, Redo2, RotateCw, Search, Sun, Undo2, ZoomIn, ZoomOut,
+  ChevronLeft, ChevronRight, FolderOpen, Monitor, Moon, Printer, Redo2, RotateCw, Search, Sun, Undo2, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { LANGUAGES, type Lang } from "../i18n/strings";
@@ -122,11 +122,6 @@ export function Toolbar({ onPrint }: { onPrint: () => void }) {
         <option value="single">{t("viewSingle")}</option>
         <option value="two">{t("viewTwo")}</option>
       </select>
-      <div className="separator" />
-
-      <IconButton label={t("toolHand")} pressed={s.tool === "hand"} onClick={() => s.setTool(s.tool === "hand" ? "select" : "hand")}>
-        <Hand size={18} />
-      </IconButton>
 
       <div className="spacer" />
       <IconButton label={t("find")} disabled={!ready} pressed={s.searchOpen} onClick={() => s.setSearchOpen(!s.searchOpen)}>
