@@ -31,17 +31,17 @@ function SignaturePad() {
   const [family, setFamily] = useState<"sans" | "serif">("serif");
   const [image, setImage] = useState<Uint8Array | null>(null);
   const [whiten, setWhiten] = useState(true);
-  /** Photos: ink recolour ("original" keeps the photo's colours), quarter turns and a small straightening tilt. */
+  /** Photos: ink recolour ("original" keeps the photo's colours) and rotation in degrees (−180…180). */
   const [photoInk, setPhotoInk] = useState<keyof typeof INKS | "original">("original");
-  const [quarter, setQuarter] = useState(0);
-  const [tilt, setTilt] = useState(0);
+  const [angle, setAngle] = useState(0);
+  /** Adds degrees, wrapping into −180…180. */
+  const turn = (by: number) => setAngle((a) => ((((a + by + 180) % 360) + 360) % 360) - 180);
   const canvas = useRef<HTMLCanvasElement>(null);
 
   const takeImage = (bytes: Uint8Array) => {
     setMode("image");
     setImage(bytes);
-    setQuarter(0);
-    setTilt(0);
+    setAngle(0);
   };
   const unreadable = () => appStore.getState().showNotice("imageUnreadable");
   // Dropping an image file anywhere on the app while this dialog is open uses it as the signature.
@@ -74,7 +74,7 @@ function SignaturePad() {
     if (mode === "draw") drawStrokes(ctx, strokes, INKS[ink]);
     else if (mode === "type") void drawTyped(ctx, name, family, INKS[ink], isCancelled);
     else if (image)
-      void drawImage(ctx, image, { clean: whiten, ink: photoInk === "original" ? null : INK_RGB[photoInk], rotation: quarter * 90 + tilt }, isCancelled).catch(() => {
+      void drawImage(ctx, image, { clean: whiten, ink: photoInk === "original" ? null : INK_RGB[photoInk], rotation: angle }, isCancelled).catch(() => {
         if (cancelled) return;
         setImage(null);
         appStore.getState().showNotice("imageUnreadable");
@@ -82,7 +82,7 @@ function SignaturePad() {
     return () => {
       cancelled = true;
     };
-  }, [mode, strokes, name, family, image, whiten, ink, photoInk, quarter, tilt]);
+  }, [mode, strokes, name, family, image, whiten, ink, photoInk, angle]);
 
   const padPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const box = e.currentTarget.getBoundingClientRect();
@@ -138,15 +138,16 @@ function SignaturePad() {
         )}
         {mode === "image" && image && (
           <div className="signature-controls">
-            <button className="icon-button" aria-label={t("rotateLeft")} title={t("rotateLeft")} onClick={() => setQuarter((q) => (q + 3) % 4)}>
+            <button className="icon-button" aria-label={t("rotateLeft")} title={t("rotateLeft")} onClick={() => turn(-90)}>
               <RotateCcw size={16} />
             </button>
-            <button className="icon-button" aria-label={t("rotateRight")} title={t("rotateRight")} onClick={() => setQuarter((q) => (q + 1) % 4)}>
+            <button className="icon-button" aria-label={t("rotateRight")} title={t("rotateRight")} onClick={() => turn(90)}>
               <RotateCw size={16} />
             </button>
             <label className="straighten">
               {t("straighten")}
-              <input type="range" min={-15} max={15} step={0.5} value={tilt} onChange={(e) => setTilt(Number(e.target.value))} onDoubleClick={() => setTilt(0)} />
+              <input type="range" min={-180} max={180} step={1} value={angle} onChange={(e) => setAngle(Number(e.target.value))} onDoubleClick={() => setAngle(0)} />
+              <output>{angle}°</output>
             </label>
             {whiten && (
               <div className="swatches" role="group" aria-label={t("inkColor")}>
