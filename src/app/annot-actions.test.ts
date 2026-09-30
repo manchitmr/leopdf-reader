@@ -9,7 +9,7 @@ const clean: HistoryState = { canUndo: false, canRedo: false, dirty: false };
 const dirty: HistoryState = { canUndo: true, canRedo: false, dirty: true };
 const info = (over: Partial<DocInfo> = {}): DocInfo => ({
   pageCount: 1, pages: [{ bounds: [0, 0, 600, 800], label: "1" }], outline: [], title: null, repaired: false,
-  editable: true, signed: false, annotatable: true, ...over,
+  editable: true, signed: false, annotatable: true, fillable: false, ...over,
 });
 
 function setup(docInfo = info()) {
@@ -28,7 +28,7 @@ function setup(docInfo = info()) {
 }
 
 test("choosing a tool checks permission, then the signed warning, then the author name", async () => {
-  const locked = setup(info({ annotatable: false }));
+  const locked = setup(info({ annotatable: false, fillable: false }));
   await chooseTool("markup", locked.deps);
   expect(locked.store.getState()).toMatchObject({ tool: "select", notice: { key: "annotNotAllowed" } });
 

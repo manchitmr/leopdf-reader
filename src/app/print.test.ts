@@ -11,7 +11,7 @@ test("renders every page into the print root, prints, then cleans up", async () 
   const { id } = store.getState().addTab({ key: "a", name: "a.pdf", path: null });
   store.getState().setOpenResult(id, {
     status: "ok",
-    info: { pageCount: 3, pages: Array(3).fill({ bounds: [0, 0, 100, 100], label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true },
+    info: { pageCount: 3, pages: Array(3).fill({ bounds: [0, 0, 100, 100], label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true, fillable: false },
   });
   const root = document.createElement("div");
   const renderPng = vi.fn(async () => new Uint8Array([137, 80, 78, 71]));
@@ -55,7 +55,7 @@ function readyTab(bounds: [number, number, number, number], pageCount = 1) {
   const { id } = store.getState().addTab({ key: "a", name: "a.pdf", path: null });
   store.getState().setOpenResult(id, {
     status: "ok",
-    info: { pageCount, pages: Array(pageCount).fill({ bounds, label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true },
+    info: { pageCount, pages: Array(pageCount).fill({ bounds, label: "1" }), outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true, fillable: false },
   });
   return { store, tab: getTab(store.getState(), id)! };
 }

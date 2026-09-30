@@ -64,6 +64,25 @@ export interface EditableLine {
   locked?: "legacy" | "no-unicode";
 }
 
+/** A form field (AcroForm widget). Geometry is page space. */
+export interface FormField {
+  /** PDF object number of the widget — stable across undo/redo. */
+  id: number;
+  page: number;
+  kind: "text" | "checkbox" | "radio" | "choice" | "button" | "signature";
+  name: string;
+  /** Tooltip / alternate name (/TU), empty if none. */
+  label: string;
+  rect: Rect;
+  value: string;
+  readOnly: boolean;
+  multiline: boolean;
+  /** Maximum characters for text fields; 0 = no limit. */
+  maxLen: number;
+  options?: string[];
+  checked?: boolean;
+}
+
 export interface HistoryState {
   canUndo: boolean;
   canRedo: boolean;

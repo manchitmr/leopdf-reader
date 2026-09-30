@@ -26,6 +26,8 @@ export interface DocInfo {
   editable: boolean;
   /** The PDF allows adding comments and markups. */
   annotatable: boolean;
+  /** The PDF has form fields and allows filling them. */
+  fillable: boolean;
   /** The PDF contains digital signatures (editing invalidates them). */
   signed: boolean;
 }
