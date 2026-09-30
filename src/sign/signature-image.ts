@@ -7,12 +7,43 @@ export interface Pixels {
   data: Uint8ClampedArray;
 }
 
-/** Makes near-white pixels transparent (for photographed or scanned signatures). */
-export function whitenToTransparent(px: Pixels, threshold = 0.9): void {
+const luminance = (d: Uint8ClampedArray, i: number) => (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255;
+
+/** Luminance below which `fraction` of the visible pixels lie. */
+function percentile(px: Pixels, fraction: number): number {
+  const counts = new Uint32Array(256);
+  let total = 0;
+  for (let i = 0; i < px.data.length; i += 4) {
+    if (px.data[i + 3] < 128) continue;
+    counts[Math.round(luminance(px.data, i) * 255)]++;
+    total++;
+  }
+  let seen = 0;
+  for (let v = 0; v < 256; v++) {
+    seen += counts[v];
+    if (seen >= total * fraction) return v / 255;
+  }
+  return 1;
+}
+
+/**
+ * Removes the paper behind a photographed or scanned signature. The paper's shade is measured (photos of
+ * paper are grey, not white) and pixels fade out smoothly between ink and paper, so edges stay smooth.
+ * With `ink`, the kept pixels are recoloured to that colour (a crisp black or blue pen look).
+ */
+export function removeBackground(px: Pixels, ink: [number, number, number] | null = null): void {
+  // ponytail: one paper shade for the whole photo; per-region shades if uneven lighting leaves shadows.
+  const paper = percentile(px, 0.6);
+  const dark = percentile(px, 0.01);
+  if (paper - dark < 0.1) return; // no contrast: nothing to separate
+  // Ink fully opaque up to 20% of the way to the paper, gone from 70% on (shadows and paper grain).
+  const opaque = dark + (paper - dark) * 0.2;
+  const clear = dark + (paper - dark) * 0.7;
   const { data } = px;
   for (let i = 0; i < data.length; i += 4) {
-    const luminance = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
-    if (luminance >= threshold) data[i + 3] = 0;
+    const t = Math.min(1, Math.max(0, (clear - luminance(data, i)) / (clear - opaque)));
+    data[i + 3] = Math.round(data[i + 3] * t * t * (3 - 2 * t));
+    if (ink) data.set(ink, i);
   }
 }
 

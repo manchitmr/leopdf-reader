@@ -19,7 +19,7 @@ test("the dialog offers Draw, Type and Image; Save waits for content", () => {
   expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole("tab", { name: "Image" }));
   expect(screen.getByRole("button", { name: "Choose image…" })).toBeTruthy();
-  expect((screen.getByLabelText("Remove white background") as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Remove paper background") as HTMLInputElement).checked).toBe(true);
 });
 
 test("Cancel closes the dialog without saving", () => {

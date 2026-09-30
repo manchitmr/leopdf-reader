@@ -59,15 +59,25 @@ export async function commitInlineEditor(deps: EditDeps = defaultEditDeps()): Pr
   }
 }
 
+/** The picked image, or null if cancelled or unreadable (then the user is told). */
+async function pickImageOrNotify(deps: EditDeps): Promise<Uint8Array | null> {
+  try {
+    return await deps.files.pickImage();
+  } catch {
+    deps.store.getState().showNotice("imageUnreadable");
+    return null;
+  }
+}
+
 export async function addImageFromPicker(tabId: string, page: number, deps: EditDeps = defaultEditDeps()): Promise<void> {
-  const bytes = await deps.files.pickImage();
+  const bytes = await pickImageOrNotify(deps);
   if (bytes) await runEdit(tabId, () => deps.engine.addImage(tabId, page, bytes, null), deps);
 }
 
 export async function replaceSelectedImage(deps: EditDeps = defaultEditDeps()): Promise<void> {
   const sel = deps.store.getState().selected;
   if (!sel) return;
-  const bytes = await deps.files.pickImage();
+  const bytes = await pickImageOrNotify(deps);
   if (!bytes) return;
   const target = sel.id ? { id: sel.id } : { rect: sel.rect };
   await runEdit(sel.tabId, () => deps.engine.replaceImage(sel.tabId, sel.page, target, bytes), deps);

@@ -74,15 +74,26 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
     return transform.toPage([e.clientX - box.left, e.clientY - box.top]);
   };
 
+  /** Set when a pointerdown just closed an open editor, so the click that follows doesn't open a new one. */
+  const closedEditor = useRef(false);
   const onLayerDown = (e: React.PointerEvent) => {
+    closedEditor.current = false;
     if (e.button !== 0 || e.target !== layer.current) return;
     const s = appStore.getState();
     if (s.inlineEditor) {
+      closedEditor.current = true;
       void commitInlineEditor();
       return;
     }
-    if (tool === "text") s.openInlineEditor({ tabId: tab.id, page, origin: pagePoint(e), objectId: null, text: "", style: s.textStyle });
-    else s.select(null);
+    if (tool !== "text") s.select(null);
+  };
+  // New text opens on click, not pointerdown: the pointerdown's default focus change would blur (and so
+  // commit and close) the editor the moment it appears.
+  const onLayerClick = (e: React.MouseEvent) => {
+    if (tool !== "text" || e.target !== layer.current || closedEditor.current) return;
+    const box = layer.current!.getBoundingClientRect();
+    const s = appStore.getState();
+    s.openInlineEditor({ tabId: tab.id, page, origin: transform.toPage([e.clientX - box.left, e.clientY - box.top]), objectId: null, text: "", style: s.textStyle });
   };
 
   const onFrameDown = (frame: Frame, mode: "move" | "resize") => (e: React.PointerEvent) => {
@@ -127,7 +138,7 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
   };
 
   return (
-    <div ref={layer} className={`edit-layer tool-${tool}`} onPointerDown={onLayerDown} onPointerMove={onMove} onPointerUp={onUp}>
+    <div ref={layer} className={`edit-layer tool-${tool}`} onPointerDown={onLayerDown} onClick={onLayerClick} onPointerMove={onMove} onPointerUp={onUp}>
       {lines.map((line, i) => {
         if (editor?.line?.rect === line.rect) return null;
         const [x0, y0, x1, y1] = transform.rectToDisplay(line.rect);
