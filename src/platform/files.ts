@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { isTauri } from "./sources";
+import { save } from "@tauri-apps/plugin-dialog";
 
 export function ensurePdfName(name: string): string {
   return name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
@@ -24,8 +23,6 @@ export function downloadPdf(name: string, bytes: Uint8Array): void {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
-const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "heic", "heif", "gif", "bmp", "tif", "tiff"];
 
 const isPng = (b: Uint8Array) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
 const isJpeg = (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8;
@@ -52,16 +49,15 @@ export async function pickImage(): Promise<Uint8Array | null> {
   return bytes && toPngOrJpeg(bytes);
 }
 
-async function pickRawImage(): Promise<Uint8Array | null> {
-  if (isTauri()) {
-    const path = await open({ multiple: false, filters: [{ name: "Images", extensions: IMAGE_EXTENSIONS }] });
-    if (!path || Array.isArray(path)) return null;
-    return new Uint8Array(await invoke<ArrayBuffer>("read_image", { path }));
-  }
+/**
+ * The web view's own file chooser, in the app too: the app crashed inside macOS (HIServices) while the
+ * native dialog plugin was picking an image, and the web view knows every image type the system decodes.
+ */
+function pickRawImage(): Promise<Uint8Array | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = IMAGE_EXTENSIONS.map((e) => `.${e}`).join(",");
+    input.accept = "image/*";
     input.onchange = async () => {
       const file = input.files?.[0];
       resolve(file ? new Uint8Array(await file.arrayBuffer()) : null);
