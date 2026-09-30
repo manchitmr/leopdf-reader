@@ -8,6 +8,16 @@ export const FAMILIES = {
   serif: '"Noto Serif", "Noto Serif Sinhala", "Noto Serif Tamil", serif',
 };
 
+let canvas: CanvasRenderingContext2D | null | undefined;
+
+/** Widest line of `text` in CSS pixels, shaped by the browser in `font` (0 where canvas isn't available, e.g. tests). */
+function textWidth(text: string, font: string): number {
+  if (canvas === undefined) canvas = document.createElement("canvas").getContext("2d");
+  if (!canvas) return 0;
+  canvas.font = font;
+  return Math.max(...text.split("\n").map((line) => canvas!.measureText(line).width));
+}
+
 interface Props {
   state: InlineEditorState;
   transform: PageTransform;
@@ -42,6 +52,10 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
   const weight = style.bold && !style.face?.bold ? 700 : 400;
   const slant = style.italic && !style.face?.italic ? "italic" : "normal";
   const decoration = [style.underline && "underline", style.strike && "line-through"].filter(Boolean).join(" ") || "none";
+  const fontFamily = faceFamily ? `${faceFamily}, ${FAMILIES[style.family]}` : FAMILIES[style.family];
+  const fontWeight = style.face ? weight : style.bold ? 700 : 400;
+  // Wide enough for the text (it grows as you type), and for a replaced line, all of the original under it.
+  const width = Math.max(120, textWidth(state.text, `${slant} ${fontWeight} ${fontSize}px ${fontFamily}`) + fontSize, cover ? cover[2] - cover[0] + 8 : 0);
 
   return (
     <textarea
@@ -52,12 +66,12 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
       spellCheck={false}
       style={{
         left: x,
-        ...(cover ? { minWidth: (cover[2] - cover[0]) * 1.15 + 8 } : {}),
+        width,
         top: y - fontSize * 1.05,
         fontSize,
         lineHeight: 1.4,
-        fontFamily: faceFamily ? `${faceFamily}, ${FAMILIES[style.family]}` : FAMILIES[style.family],
-        fontWeight: style.face ? weight : style.bold ? 700 : 400,
+        fontFamily,
+        fontWeight,
         fontStyle: slant,
         textDecoration: decoration,
         color: `rgb(${style.color.map((c) => Math.round(c * 255)).join(",")})`,
