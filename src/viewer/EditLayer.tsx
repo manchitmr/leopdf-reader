@@ -50,14 +50,11 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
     };
   }, [tab.id, page, tab.revision, tool]);
 
-  const onLineDown = (line: EditableLine) => (e: React.PointerEvent) => {
+  // Opens on click, not pointerdown: the pointerdown's default focus change would blur (and so commit) the new editor.
+  // An editor already open on another line is committed by that same blur first.
+  const onLineClick = (line: EditableLine) => (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (e.button !== 0) return;
     const s = appStore.getState();
-    if (s.inlineEditor) {
-      void commitInlineEditor();
-      return;
-    }
     if (line.locked) s.showNotice(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode");
     else s.openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line, text: line.text, style: line.style });
   };
@@ -130,7 +127,8 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
             className={`edit-line ${line.locked ? "locked" : ""}`}
             style={{ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }}
             title={line.locked ? t(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode") : t("editLine")}
-            onPointerDown={onLineDown(line)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onLineClick(line)}
           />
         );
       })}
