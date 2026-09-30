@@ -1,6 +1,6 @@
 import * as mupdf from "mupdf";
 import { DocumentEditor } from "../edit/editor";
-import { FontRegistry, type FontSource } from "../edit/font-registry";
+import { FontRegistry, type FaceSource, type FontSource } from "../edit/font-registry";
 import { listAnnotations } from "../edit/annotations";
 import { listOutline } from "../edit/bookmarks";
 import type { Annot, AnnotPatch, EditableLine, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
@@ -54,6 +54,11 @@ export class DocumentEngine {
 
   constructor(options: { fontSource?: FontSource } = {}) {
     this.fonts = new FontRegistry(options.fontSource ?? noFonts);
+  }
+
+  /** How the worker reads installed font files: the app passes a function that asks the Rust side. */
+  setFaceSource(source: FaceSource): void {
+    this.fonts.faceSource = source;
   }
 
   open(docId: string, bytes: Uint8Array): OpenResult {

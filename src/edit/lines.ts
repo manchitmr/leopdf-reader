@@ -120,15 +120,19 @@ export function listLines(page: mupdf.PDFPage): EditableLine[] {
     const garbled = /[\uFFFD\uE000-\uF8FF]/.test(text) || !text;
     const first = visible[0];
     const name = font.getName();
+    const fontSize = Math.round(first.size * 10) / 10;
     lines.push({
       rect,
       origin: first.origin,
       text,
       chars: visible.length,
+      fontName: name.replace(/^[A-Z]{6}\+/, ""),
+      fontSize,
       style: {
         family: font.isSerif() ? "serif" : "sans",
         bold: font.isBold() || /bold|black|heavy/i.test(name),
-        size: Math.round(first.size * 10) / 10,
+        ...(font.isItalic() || /italic|oblique/i.test(name) ? { italic: true } : {}),
+        size: fontSize,
         color: toRgb(first.color),
       },
       maxRight: Math.max(blockRight, rect[2]),

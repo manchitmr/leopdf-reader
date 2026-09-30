@@ -60,7 +60,7 @@ test("committing empty text for an existing object deletes it; for a new one doe
 test("editing an original line replaces it only when something changed, and explains refusals", async () => {
   const { store, id, engine, deps } = setup();
   const style = store.getState().textStyle;
-  const line = { rect: [10, 10, 90, 24] as Rect, origin: [10, 20] as Point, text: "ගාල්ල", chars: 5, style, maxRight: 200 };
+  const line = { rect: [10, 10, 90, 24] as Rect, origin: [10, 20] as Point, text: "ගාල්ල", chars: 5, style, maxRight: 200, fontName: "IskoolaPota", fontSize: 12 };
   const open = (text: string) => store.getState().openInlineEditor({ tabId: id, page: 0, origin: line.origin, objectId: null, line, text, style });
 
   open("ගාල්ල");

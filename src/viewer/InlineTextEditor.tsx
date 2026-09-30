@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { previewFamily } from "../platform/fonts";
 import type { InlineEditorState } from "../state/store";
 import type { PageTransform } from "./geometry";
 
@@ -28,6 +29,20 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
 
   useEffect(() => ref.current?.focus(), []);
 
+  const [faceFamily, setFaceFamily] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setFaceFamily(null);
+    if (style.face) void previewFamily(style.face).then((f) => !cancelled && setFaceFamily(f));
+    return () => {
+      cancelled = true;
+    };
+  }, [style.face]);
+  // A bold/italic face file already looks bold/italic; only ask the browser to fake what the face lacks.
+  const weight = style.bold && !style.face?.bold ? 700 : 400;
+  const slant = style.italic && !style.face?.italic ? "italic" : "normal";
+  const decoration = [style.underline && "underline", style.strike && "line-through"].filter(Boolean).join(" ") || "none";
+
   return (
     <textarea
       ref={ref}
@@ -41,8 +56,10 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
         top: y - fontSize * 1.05,
         fontSize,
         lineHeight: 1.4,
-        fontFamily: FAMILIES[style.family],
-        fontWeight: style.bold ? 700 : 400,
+        fontFamily: faceFamily ? `${faceFamily}, ${FAMILIES[style.family]}` : FAMILIES[style.family],
+        fontWeight: style.face ? weight : style.bold ? 700 : 400,
+        fontStyle: slant,
+        textDecoration: decoration,
         color: `rgb(${style.color.map((c) => Math.round(c * 255)).join(",")})`,
       }}
       onChange={(e) => onChange(e.target.value)}
@@ -54,7 +71,10 @@ export function InlineTextEditor({ state, transform, zoom, onChange, onCommit, o
           onCommit();
         }
       }}
-      onBlur={onCommit}
+      // Using the edit bar (font, size, bold …) keeps the editor open; clicking anywhere else applies it.
+      onBlur={(e) => {
+        if (!(e.relatedTarget as Element | null)?.closest(".editbar")) onCommit();
+      }}
       onPointerDown={(e) => e.stopPropagation()}
     />
   );

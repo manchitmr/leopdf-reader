@@ -22,3 +22,4 @@ tauri = { version = "2.12.0", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 percent-encoding = "2"
+ttf-parser = "0.25"

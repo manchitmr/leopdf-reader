@@ -1,9 +1,26 @@
 import type { Point, Quad, Rect } from "../engine/types";
 import type { Family } from "./fonts";
 
+/** A font installed on this computer (see src-tauri/src/fonts.rs). */
+export interface SystemFace {
+  path: string;
+  /** Face index inside a .ttc collection. */
+  index: number;
+  family: string;
+  postscript: string;
+  bold: boolean;
+  italic: boolean;
+}
+
 export interface TextStyle {
+  /** Bundled Noto family, used for everything `face` doesn't cover. */
   family: Family;
   bold: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  /** Installed font to write with (scripts it lacks fall back to Noto). */
+  face?: SystemFace;
   /** Font size in points. */
   size: number;
   /** RGB, each 0–1. */
@@ -35,8 +52,12 @@ export interface EditableLine {
   text: string;
   /** Visible characters, used to check that a replacement removed only this line. */
   chars: number;
-  /** Closest bundled-font match for the original style. */
+  /** Closest bundled-font match for the original style (size fitted to the Noto font). */
   style: TextStyle;
+  /** The PDF's font name without its subset prefix, e.g. "IskoolaPota-Bold". */
+  fontName: string;
+  /** The original font size, for when the same font is installed. */
+  fontSize: number;
   /** Right edge of the line's text column. */
   maxRight: number;
   /** Why the line can't be edited yet. */

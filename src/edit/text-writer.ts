@@ -90,21 +90,59 @@ export interface TextBlock {
   color: [number, number, number];
   /** Text matrix (PDF space) for the start of each line's baseline. */
   lineMatrix(line: number): Matrix;
+  /** Slant the text (the fonts have no italic of their own). */
+  slant?: boolean;
+  /** Thicken runs whose font has no bold of its own. */
+  fakeBold?: (run: ShapedRun) => boolean;
+  underline?: boolean;
+  strike?: boolean;
+}
+
+/** Shear the text space by ~12°, like a word processor's synthetic italic. */
+const SLANT = 0.21;
+
+export function slanted([a, b, c, d, e, f]: Matrix): Matrix {
+  return [a, b, c + SLANT * a, d + SLANT * b, e, f];
+}
+
+/** Bars under / through each line, drawn in the line's text space (y up from the baseline). */
+function decorations(block: TextBlock): string {
+  const bars: [number, number][] = [];
+  if (block.underline) bars.push([-0.15, 0.06]);
+  if (block.strike) bars.push([0.3, 0.06]);
+  if (!bars.length) return "";
+  const [r, g, b] = block.color;
+  let out = "";
+  block.lines.forEach((line, index) => {
+    if (line.width <= 0) return;
+    out += `q ${block.lineMatrix(index).map(fmt).join(" ")} cm ${fmt(r)} ${fmt(g)} ${fmt(b)} rg`;
+    for (const [y, h] of bars) out += ` 0 ${fmt(y * block.size)} ${fmt(line.width)} ${fmt(h * block.size)} re`;
+    out += " f Q\n";
+  });
+  return out;
 }
 
 export function textContent(block: TextBlock, useFont: (run: ShapedRun) => FontUse): string {
   const [r, g, b] = block.color;
   let out = `q BT ${fmt(r)} ${fmt(g)} ${fmt(b)} rg\n`;
+  let stroking = false;
   block.lines.forEach((line, index) => {
-    out += `${block.lineMatrix(index).map(fmt).join(" ")} Tm\n`;
+    const matrix = block.lineMatrix(index);
+    out += `${(block.slant ? slanted(matrix) : matrix).map(fmt).join(" ")} Tm\n`;
     for (const run of line.runs) {
       const font = useFont(run);
       out += `/${font.resourceName} ${fmt(block.size)} Tf\n`;
+      const bold = !!block.fakeBold?.(run);
+      if (bold !== stroking) {
+        // Fill + stroke thickens the glyphs (synthetic bold).
+        out += bold ? `${fmt(r)} ${fmt(g)} ${fmt(b)} RG ${fmt(block.size * 0.03)} w 2 Tr\n` : "0 Tr\n";
+        stroking = bold;
+      }
       for (const span of clusterSpans(run)) {
         font.record(span.glyphs, span.text);
         out += spanOps(run, span.glyphs, span.text, block.size);
       }
     }
   });
-  return out + "ET Q\n";
+  return out + "ET Q\n" + decorations(block);
 }

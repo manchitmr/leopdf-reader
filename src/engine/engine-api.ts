@@ -1,5 +1,6 @@
 import { transfer } from "comlink";
 import { DocumentEngine } from "./document-engine";
+import type { FaceSource } from "../edit/font-registry";
 import type { AnnotPatch, EditableLine, NewAnnot, TextStyle } from "../edit/types";
 import type { Point, Rect, Rotation } from "./types";
 
@@ -18,6 +19,7 @@ export function createEngineApi(engine = new DocumentEngine()) {
     search: (docId: string, query: string, from?: number, to?: number) => engine.search(docId, query, from, to),
     select: (docId: string, page: number, from: Point, to: Point) => engine.select(docId, page, from, to),
     close: (docId: string) => engine.close(docId),
+    setFaceSource: (source: FaceSource) => engine.setFaceSource(source),
     addText: (docId: string, page: number, origin: Point, text: string, style: TextStyle) => engine.addText(docId, page, origin, text, style),
     updateText: (docId: string, page: number, id: string, text: string, style: TextStyle) => engine.updateText(docId, page, id, text, style),
     replaceLine: (docId: string, page: number, line: EditableLine, text: string, style: TextStyle) => engine.replaceLine(docId, page, line, text, style),

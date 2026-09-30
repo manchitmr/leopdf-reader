@@ -7,6 +7,7 @@ import { useT } from "../i18n/useT";
 import { appStore, useApp, type DocTab } from "../state/store";
 import type { PageTransform } from "./geometry";
 import { InlineTextEditor } from "./InlineTextEditor";
+import { findInstalled, listSystemFonts } from "../platform/fonts";
 
 interface Frame {
   id: string | null;
@@ -55,8 +56,17 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
   const onLineClick = (line: EditableLine) => (e: React.MouseEvent) => {
     e.stopPropagation();
     const s = appStore.getState();
-    if (line.locked) s.showNotice(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode");
-    else s.openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line, text: line.text, style: line.style });
+    if (line.locked) {
+      s.showNotice(line.locked === "legacy" ? "lineLegacy" : "lineNoUnicode");
+      return;
+    }
+    // Same font installed → write with it at the original size; otherwise the fitted Noto style.
+    void listSystemFonts().then((fonts) => {
+      const face = findInstalled(fonts, line.fontName, line.style.bold, !!line.style.italic);
+      const style = face ? { ...line.style, face, size: line.fontSize } : line.style;
+      // `line.style` becomes the style it opened with, so committing it untouched changes nothing.
+      appStore.getState().openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line: { ...line, style }, text: line.text, style });
+    });
   };
 
   const pagePoint = (e: React.PointerEvent): Point => {
@@ -119,7 +129,7 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
   return (
     <div ref={layer} className={`edit-layer tool-${tool}`} onPointerDown={onLayerDown} onPointerMove={onMove} onPointerUp={onUp}>
       {lines.map((line, i) => {
-        if (editor?.line === line) return null;
+        if (editor?.line?.rect === line.rect) return null;
         const [x0, y0, x1, y1] = transform.rectToDisplay(line.rect);
         return (
           <div

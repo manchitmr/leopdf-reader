@@ -228,3 +228,6 @@ button, input, select { font: inherit; color: inherit; }
 .outline-delete { opacity: 0; flex: none; }
 .outline-row:hover .outline-delete, .outline-delete:focus-visible { opacity: 1; }
 .outline-rename { flex: 1; min-width: 0; height: 24px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: inherit; }
+.pdf-font { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.pdf-font.ok { color: #15803d; }
+.pdf-font.missing { color: #b45309; }

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import * as mupdf from "mupdf";
 import { beforeEach, expect, test } from "vitest";
 import { DocumentEditor } from "./editor";
@@ -98,4 +99,24 @@ test("lines in legacy fonts are locked", async () => {
   resources.get("Font").put("F1", font);
   doc.insertPage(-1, doc.addPage([0, 0, 300, 200], 0, resources, "BT /F1 14 Tf 20 100 Td (Y%S ,dxldj) Tj ET"));
   expect((await new DocumentEditor(doc, registry).listLines(0))[0]).toMatchObject({ text: "Y%S ,dxldj", locked: "legacy" });
+});
+
+test("lines report the PDF font name and original size", async () => {
+  const hello = (await editor.listLines(0))[1];
+  expect(hello).toMatchObject({ fontName: "Times-Roman", fontSize: 12 });
+});
+
+test("an installed font is used where it has the script; missing bold/italic are synthesised; bars are drawn", async () => {
+  const faceRegistry = new FontRegistry(nodeFontSource, async (path) => new Uint8Array(readFileSync(path)));
+  const path = fileURLToPath(new URL("../../node_modules/@expo-google-fonts/noto-serif-sinhala/400Regular/NotoSerifSinhala_400Regular.ttf", import.meta.url));
+  const face = { path, index: 0, family: "Noto Serif Sinhala", postscript: "NotoSerifSinhala-Regular", bold: false, italic: false };
+  const ed = new DocumentEditor(pdf, faceRegistry);
+  const line = (await ed.listLines(0))[2];
+  await ed.replaceLine(0, line, "ශ්‍රී ලංකාව இலங்கை", { ...line.style, face, bold: true, italic: true, underline: true, strike: true });
+  const content = pdf.loadPage(0).getObject().get("LeoPDFObjects").get(0).get("Stream").readStream().asString();
+  expect(content).toMatch(/\/LeoF-face-\w+ [\d.]+ Tf\n.* 2 Tr/); // installed font, thickened (it has no bold)
+  expect(content).toContain("/LeoF-tamil-serif-bold"); // it has no Tamil → Noto, real bold
+  expect(content).toMatch(/^1 0 0\.21 1 [\d.]+ [\d.]+ Tm$/m); // slanted (neither font has an italic)
+  expect(content.match(/ re/g)).toHaveLength(2);
+  expect(pageText(mupdf.Document.openDocument(ed.save(), "application/pdf"))).toContain("ශ්‍රී ලංකාව இலங்கை");
 });

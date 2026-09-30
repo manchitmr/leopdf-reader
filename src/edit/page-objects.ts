@@ -66,7 +66,16 @@ function tagged(id: string, body: string): string {
 function textBody(ctx: EditContext, origin: Point, lines: ShapedLine[], style: TextStyle): string {
   const fontDict = ensureOwnResources(ctx.pdf, ctx.page).get("Font");
   return textContent(
-    { lines, size: style.size, color: style.color, lineMatrix: (i) => textMatrixAt(ctx.page, [origin[0], origin[1] + i * lineHeight(style)]) },
+    {
+      lines,
+      size: style.size,
+      color: style.color,
+      lineMatrix: (i) => textMatrixAt(ctx.page, [origin[0], origin[1] + i * lineHeight(style)]),
+      slant: !!style.italic && !style.face?.italic,
+      fakeBold: (run) => style.bold && !run.font.bold,
+      underline: style.underline,
+      strike: style.strike,
+    },
     (run) => {
       const use = ctx.fonts.use(run.font);
       fontDict.put(use.resourceName, use.ref);

@@ -370,7 +370,9 @@ export function createAppStore(init: Partial<Settings> = {}) {
       removeSignature: (id) =>
         set((s) => ({ signatures: s.signatures.filter((x) => x.id !== id), signatureId: s.signatureId === id ? null : s.signatureId })),
       setEditTool: (editTool) => set({ editTool, selected: null }),
-      setTextStyle: (partial) => set((s) => ({ textStyle: { ...s.textStyle, ...partial } })),
+      // While the inline editor is open the edit bar styles that text; otherwise the next text added.
+      setTextStyle: (partial) =>
+        set((s) => (s.inlineEditor ? { inlineEditor: { ...s.inlineEditor, style: { ...s.inlineEditor.style, ...partial } } } : { textStyle: { ...s.textStyle, ...partial } })),
       applyHistory: (id, history) =>
         update(id, (t) => ({
           dirty: history.dirty,
