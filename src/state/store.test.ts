@@ -9,7 +9,7 @@ const info = (pageCount: number): DocInfo => ({
   title: null,
   repaired: false,
   editable: true,
-  signed: false, annotatable: true,
+  signed: false, annotatable: true, fillable: false,
 });
 const src = (key: string) => ({ key, name: `${key}.pdf`, path: `/${key}.pdf` });
 

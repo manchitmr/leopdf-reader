@@ -8,7 +8,7 @@ import { commitInlineEditor, enterEditMode, requestClose, requestQuit, resolveDi
 const clean: HistoryState = { canUndo: false, canRedo: false, dirty: false };
 const dirty: HistoryState = { canUndo: true, canRedo: false, dirty: true };
 const info = (over: Partial<DocInfo> = {}): DocInfo => ({
-  pageCount: 1, pages: [{ bounds: [0, 0, 600, 800], label: "1" }], outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true, ...over,
+  pageCount: 1, pages: [{ bounds: [0, 0, 600, 800], label: "1" }], outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true, fillable: false, ...over,
 });
 
 function setup(path: string | null = "/docs/a.pdf", docInfo = info()) {

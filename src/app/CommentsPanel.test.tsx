@@ -21,7 +21,7 @@ beforeEach(() => {
   tabId = appStore.getState().addTab({ key: "/a.pdf", name: "a.pdf", path: "/a.pdf" }).id;
   appStore.getState().setOpenResult(tabId, {
     status: "ok",
-    info: { pageCount: 2, pages: [{ bounds: [0, 0, 600, 800], label: "1" }, { bounds: [0, 0, 600, 800], label: "ii" }], outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true },
+    info: { pageCount: 2, pages: [{ bounds: [0, 0, 600, 800], label: "1" }, { bounds: [0, 0, 600, 800], label: "ii" }], outline: [], title: null, repaired: false, editable: true, signed: false, annotatable: true, fillable: false },
   });
 });
 afterEach(cleanup);

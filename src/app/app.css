@@ -232,6 +232,19 @@ button, input, select { font: inherit; color: inherit; }
 .pdf-font { max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .pdf-font.ok { color: #15803d; }
 .pdf-font.missing { color: #b45309; }
+/* Fillable form fields (Acrobat-style light blue); only the Select tool can use them. */
+.form-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.form-layer.active .form-field { pointer-events: auto; }
+.form-field { position: absolute; background: rgba(59, 130, 246, 0.12); border-radius: 2px; }
+.form-field:hover, .form-field:focus-within { outline: 1px solid rgba(37, 99, 235, 0.7); }
+.form-field input, .form-field textarea {
+  width: 100%; height: 100%; box-sizing: border-box; padding: 0 2px; border: none; outline: none; resize: none;
+  background: transparent; color: transparent; caret-color: #111;
+}
+/* While typing, cover the PDF's drawing of the value and show the live text instead. */
+.form-field input:focus, .form-field textarea:focus { background: #fff; color: #111; }
+.form-field select { width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.field-toggle { width: 100%; height: 100%; padding: 0; border: none; background: transparent; cursor: pointer; }
 .straighten { display: inline-flex; align-items: center; gap: 6px; }
 .straighten input { width: 160px; }
 .straighten output { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }

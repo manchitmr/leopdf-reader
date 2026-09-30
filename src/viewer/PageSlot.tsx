@@ -4,6 +4,7 @@ import type { Point } from "../engine/types";
 import { appStore, useApp, type DocTab } from "../state/store";
 import { AnnotationLayer } from "./AnnotationLayer";
 import { EditLayer } from "./EditLayer";
+import { FormLayer } from "./FormLayer";
 import { pageTransform } from "./geometry";
 import type { Slot } from "./layout";
 import { PageCanvas } from "./PageCanvas";
@@ -68,6 +69,7 @@ export function PageSlot({ tab, slot }: { tab: DocTab; slot: Slot }) {
         })}
       </div>
       {!editMode && <AnnotationLayer tab={tab} page={slot.page} transform={transform} />}
+      {!editMode && <FormLayer tab={tab} page={slot.page} transform={transform} />}
       {editMode && <EditLayer tab={tab} page={slot.page} transform={transform} zoom={tab.zoom} />}
     </div>
   );

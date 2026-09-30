@@ -22,7 +22,7 @@ function open(over: Partial<DocInfo> = {}) {
     status: "ok",
     info: {
       pageCount: 3, pages: ["1", "2", "3"].map((label) => ({ bounds: [0, 0, 600, 800], label })), outline: [node("Chapter One", 0, 0)],
-      title: null, repaired: false, editable: true, signed: false, annotatable: true, ...over,
+      title: null, repaired: false, editable: true, signed: false, annotatable: true, fillable: false, ...over,
     },
   });
 }

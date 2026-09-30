@@ -3,7 +3,8 @@ import { DocumentEditor } from "../edit/editor";
 import { FontRegistry, type FaceSource, type FontSource } from "../edit/font-registry";
 import { listAnnotations } from "../edit/annotations";
 import { listOutline } from "../edit/bookmarks";
-import type { Annot, AnnotPatch, EditableLine, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
+import { hasForm, listFields } from "../edit/forms";
+import type { Annot, AnnotPatch, EditableLine, EditResult, FormField, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
 
@@ -144,6 +145,9 @@ export class DocumentEngine {
 
   addText = (docId: string, page: number, origin: Point, text: string, style: TextStyle) => this.edit(docId, (e) => e.addText(page, origin, text, style));
   updateText = (docId: string, page: number, id: string, text: string, style: TextStyle) => this.edit(docId, (e) => e.updateText(page, id, text, style));
+  fillText = (docId: string, page: number, id: number, value: string) => this.edit(docId, (e) => e.fillText(page, id, value));
+  setFieldChecked = (docId: string, page: number, id: number, checked: boolean) => this.edit(docId, (e) => e.setFieldChecked(page, id, checked));
+  setFieldChoice = (docId: string, page: number, id: number, value: string) => this.edit(docId, (e) => e.setFieldChoice(page, id, value));
   replaceLine = (docId: string, page: number, line: EditableLine, text: string, style: TextStyle) =>
     this.edit(docId, (e) => e.replaceLine(page, line, text, style));
   moveObject = (docId: string, page: number, id: string, dx: number, dy: number) => this.edit(docId, (e) => e.moveObject(page, id, dx, dy));
@@ -190,6 +194,14 @@ export class DocumentEngine {
 
   listObjects(docId: string, page: number): PageObject[] {
     return this.editor(docId).listObjects(page);
+  }
+
+  /** Form fields on a page. Doesn't start the edit journal (filling does). */
+  listFields(docId: string, page: number): FormField[] {
+    const entry = this.get(docId);
+    if (entry.editor) return entry.editor.listFields(page);
+    const pdf = entry.doc.asPDF();
+    return pdf ? listFields(pdf.loadPage(page) as mupdf.PDFPage, page) : [];
   }
 
   listLines(docId: string, page: number): Promise<EditableLine[]> {
@@ -253,6 +265,7 @@ export class DocumentEngine {
           repaired,
           editable: doc.isPDF() && doc.hasPermission("edit"),
           annotatable: doc.isPDF() && doc.hasPermission("annotate"),
+          fillable: doc.isPDF() && doc.hasPermission("form") && hasForm(doc.asPDF()!),
           signed: isSigned(doc),
         },
       };

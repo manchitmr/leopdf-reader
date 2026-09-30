@@ -7,12 +7,13 @@ import {
   addImageObject, addTextObject, defaultImageRect, deleteObject, listObjects, moveObject, replaceObjectImage, resizeObject,
   updateTextObject, type EditContext,
 } from "./page-objects";
+import * as forms from "./forms";
 import { fitSize, listLines, OverlapError, removeLineText } from "./lines";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
 import * as annots from "./annotations";
 import * as bookmarks from "./bookmarks";
 import type { OutlineNode } from "../engine/types";
-import type { Annot, AnnotPatch, EditableLine, EditResult, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
+import type { Annot, AnnotPatch, EditableLine, EditResult, FormField, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "./types";
 
 /** Edits one PDF document. Every change is one journal operation, so undo/redo cover it. */
 export class DocumentEditor {
@@ -128,6 +129,39 @@ export class DocumentEditor {
       return addImageObject(ctx, image, [rect[0] + dx, rect[1] + dy, rect[2] + dx, rect[3] + dy]);
     });
     return this.result(id);
+  }
+
+  listFields(page: number): FormField[] {
+    return forms.listFields(this.pdf.loadPage(page), page);
+  }
+
+  async fillText(page: number, id: number, value: string): Promise<EditResult> {
+    const pageObj = this.pdf.loadPage(page);
+    const widget = forms.findWidget(pageObj, id);
+    const max = widget.getMaxLen();
+    const text = max > 0 ? Array.from(value).slice(0, max).join("") : value;
+    let style = forms.fieldStyle(this.pdf, widget);
+    let lines = await this.shape(widget.isMultiline() ? text : text.replace(/\n/g, " "), style);
+    if (!widget.isMultiline() && forms.autoSized(this.pdf, widget)) {
+      const [x0, , x1] = widget.getRect();
+      const size = forms.fitToWidth(lines, style.size, x1 - x0 - 4);
+      if (size !== style.size) {
+        style = { ...style, size };
+        lines = await this.shape(lines[0].text, style);
+      }
+    }
+    this.op("Fill form", page, (ctx) => forms.writeTextField(this.pdf, ctx.page, forms.findWidget(ctx.page, id), text, lines, style, this.fonts));
+    return this.result(String(id), lines);
+  }
+
+  async setFieldChecked(page: number, id: number, checked: boolean): Promise<EditResult> {
+    this.op("Fill form", page, (ctx) => forms.setChecked(ctx.page, forms.findWidget(ctx.page, id), checked));
+    return this.result(String(id));
+  }
+
+  async setFieldChoice(page: number, id: number, value: string): Promise<EditResult> {
+    this.op("Fill form", page, (ctx) => forms.setChoice(ctx.page, forms.findWidget(ctx.page, id), value));
+    return this.result(String(id));
   }
 
   listAnnotations(page: number): Annot[] {
