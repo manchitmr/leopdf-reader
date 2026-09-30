@@ -32,6 +32,7 @@ export async function runEdit(tabId: string, call: () => Promise<EditResult>, de
   try {
     const result = await call();
     s.applyHistory(tabId, result.history);
+    if (result.info) s.applyInfo(tabId, result.info);
     if (result.missing?.length) s.showNotice("missingGlyphs", { chars: result.missing.join(" ") });
     return result;
   } catch {
@@ -166,6 +167,7 @@ export async function resolveDialog(choice: "save" | "discard" | "cancel", deps:
     s.acknowledgeSigned(dialog.tabId);
     if ("tool" in dialog.then) await chooseTool(dialog.then.tool, deps);
     else if ("bookmark" in dialog.then) await addBookmarkHere(dialog.tabId, deps);
+    else if ("organize" in dialog.then) s.setOrganizing(true);
     else {
       s.setEditMode(true);
       s.setEditTool(dialog.then.edit);

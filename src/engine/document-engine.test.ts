@@ -146,3 +146,21 @@ test("the outline is read fresh after bookmark edits", async () => {
   await engine.deleteBookmark("a", [2]);
   expect(engine.outline("a")).toHaveLength(2);
 });
+
+test("page operations and their undo report the new page list; search sees the new order", async () => {
+  engine.open("a", fixture);
+  const blank = await engine.insertBlankPage("a", 0);
+  expect(blank.info?.pageCount).toBe(3);
+  expect(blank.pages).toEqual([0]);
+  const rotated = await engine.rotatePages("a", [1], 90);
+  expect(rotated.info!.pages[1].bounds[2]).toBeGreaterThan(rotated.info!.pages[1].bounds[3]); // now landscape
+  expect(engine.search("a", "Hello world").map((h) => h.page)).toEqual([1]);
+  const undone = await engine.undo("a");
+  expect(undone.info?.pageCount).toBe(3);
+  const undone2 = await engine.undo("a");
+  expect(undone2.info?.pageCount).toBe(2);
+  expect(engine.search("a", "Hello world").map((h) => h.page)).toEqual([0]);
+  const parts = engine.splitEvery("a", 1);
+  expect(parts).toHaveLength(2);
+  expect(mupdf.Document.openDocument(engine.extractPages("a", [1, 0]), "application/pdf").countPages()).toBe(2);
+});
