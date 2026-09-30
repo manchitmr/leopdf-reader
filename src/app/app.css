@@ -149,7 +149,8 @@ button, input, select { font: inherit; color: inherit; }
 .editbar { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--accent-soft); border-bottom: 1px solid var(--border); }
 .editbar select, .size-input { height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); padding: 0 6px; }
 .size-input { width: 56px; }
-.editbar input[type="color"] { width: 32px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 0; background: none; }
+.custom-color { position: relative; display: inline-block; margin-left: 4px; background: conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #3b82f6, #8b5cf6, #ef4444); }
+.custom-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; }
 .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.35); z-index: 20; }
 .modal-backdrop h2 { margin-top: 0; font-size: 17px; }
 .toast.notice { bottom: 64px; }

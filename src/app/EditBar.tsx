@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import type { TextStyle } from "../edit/types";
 import { useT } from "../i18n/useT";
 import { faceOf, findInstalled, installHint, listSystemFonts, type SystemFont } from "../platform/fonts";
+import { sameColor, TEXT_COLORS, toHex } from "../state/palette";
 import { useApp, type DocTab } from "../state/store";
+import { Swatches } from "./Swatches";
 import { addImageFromPicker, saveTab } from "./edit-actions";
 
-const toHex = ([r, g, b]: [number, number, number]) => `#${[r, g, b].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;
 const fromHex = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
 const NOTO = { sans: "Noto Sans", serif: "Noto Serif" };
 /** Keeps focus in the inline editor when a bar button is clicked. */
@@ -84,7 +85,17 @@ export function EditBar({ tab }: { tab: DocTab }) {
       {toggleButton(!!style.italic, t("italic"), <Italic size={18} />, { italic: !style.italic })}
       {toggleButton(!!style.underline, t("underline"), <Underline size={18} />, { underline: !style.underline })}
       {toggleButton(!!style.strike, t("strikethrough"), <Strikethrough size={18} />, { strike: !style.strike })}
-      <input type="color" aria-label={t("textColor")} title={t("textColor")} value={toHex(style.color)} onChange={(e) => setStyle({ color: fromHex(e.target.value) })} />
+      <div className="text-colors" onMouseDown={keepFocus}>
+        <Swatches colors={TEXT_COLORS} value={style.color} onPick={(color) => setStyle({ color })} />
+      </div>
+      {/* Any other colour: a round swatch over the native picker, filled with the colour once it's chosen. */}
+      <label
+        className={`swatch custom-color ${TEXT_COLORS.some((c) => sameColor(c, style.color)) ? "" : "pressed"}`}
+        style={TEXT_COLORS.some((c) => sameColor(c, style.color)) ? undefined : { background: toHex(style.color) }}
+        title={t("textColor")}
+      >
+        <input type="color" aria-label={t("textColor")} value={toHex(style.color)} onChange={(e) => setStyle({ color: fromHex(e.target.value) })} />
+      </label>
       <div className="spacer" />
       {editor?.line ? (
         <PdfFontNote fontName={editor.line.fontName} fonts={fonts} fallback={NOTO[editor.line.style.family]} bold={editor.line.style.bold} />
