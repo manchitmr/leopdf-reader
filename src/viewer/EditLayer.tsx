@@ -62,7 +62,8 @@ export function EditLayer({ tab, page, transform, zoom }: { tab: DocTab; page: n
     }
     // Same font installed → write with it at the original size; otherwise the fitted Noto style.
     void listSystemFonts().then((fonts) => {
-      const face = findInstalled(fonts, line.fontName, line.style.bold, !!line.style.italic);
+      // Never a legacy font: it would draw the Unicode text as gibberish.
+      const face = line.legacyFont ? undefined : findInstalled(fonts, line.fontName, line.style.bold, !!line.style.italic);
       const style = face ? { ...line.style, face, size: line.fontSize } : line.style;
       // `line.style` becomes the style it opened with, so committing it untouched changes nothing.
       appStore.getState().openInlineEditor({ tabId: tab.id, page, origin: line.origin, objectId: null, line: { ...line, style }, text: line.text, style });

@@ -1,16 +1,8 @@
 import * as mupdf from "mupdf";
 import type { Point, Rect } from "../engine/types";
+import { isLegacyFont, legacyScript, unicodeItems } from "./legacy";
 import { listObjects } from "./page-objects";
 import type { EditableLine, RGB } from "./types";
-
-/**
- * Pre-Unicode fonts that draw Sinhala/Tamil with Latin codes (extract as "Y%S ,dxlslhka…").
- * Names seen in real Sri Lankan documents; matched against the font name without its subset prefix.
- */
-const LEGACY =
-  /^(fm|dl-|dl_|sinhamethsara|apex|basuru|abhaya(?!.?libre)|derana|a-kelani|kaputa|thibus|bamini|baamini|kalaham|tharmini|kamalam|ravib|thenmoli|aabohi|vanavil|senthamil|tam-|tab-)/i;
-
-export const isLegacyFont = (name: string) => LEGACY.test(name.replace(/^[A-Z]{6}\+/, ""));
 
 /** Symbol fonts draw bullets; they stay on the page and out of the editable line. */
 const SYMBOL = /wingdings|symbol|dingbat|webdings/i;
@@ -114,9 +106,15 @@ export function listLines(page: mupdf.PDFPage): EditableLine[] {
     const rect = quadRect(visible);
     if (ours.some((r) => overlaps(r, rect))) continue;
     const font = mostUsedFont(visible);
-    const text = fixVisualOrder(kept.map((ch) => ch.c).join(""), visualFonts.has(font.getName())).trim();
-    // Real Sinhala/Tamil code points prove a Unicode font, whatever its name.
-    const legacy = visible.some((ch) => isLegacyFont(ch.font.getName())) && !/[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(text);
+    const raw = kept.map((ch) => ch.c).join("");
+    // Legacy-font runs (FM Abhaya, Bamini …) become Unicode; others are as extracted.
+    const converted = unicodeItems(kept.map((ch) => ({ c: ch.c, font: ch.font.getName(), quad: null })))
+      .map((item) => item.c)
+      .join("");
+    const text = fixVisualOrder(converted, visualFonts.has(font.getName())).trim();
+    const legacyFont = visible.find((ch) => legacyScript(ch.font.getName()))?.font.getName();
+    // Legacy fonts without a conversion table stay locked; real Sinhala/Tamil code points prove a Unicode font.
+    const legacy = visible.some((ch) => isLegacyFont(ch.font.getName()) && !legacyScript(ch.font.getName())) && !/[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(raw);
     const garbled = /[\uFFFD\uE000-\uF8FF]/.test(text) || !text;
     const first = visible[0];
     const name = font.getName();
@@ -136,10 +134,33 @@ export function listLines(page: mupdf.PDFPage): EditableLine[] {
         color: toRgb(first.color),
       },
       maxRight: Math.max(blockRight, rect[2]),
+      ...(legacyFont ? { legacyFont: legacyFont.replace(/^[A-Z]{6}\+/, "") } : {}),
       ...(legacy ? { locked: "legacy" as const } : garbled ? { locked: "no-unicode" as const } : {}),
     });
   }
-  return lines;
+  return mergeStacked(lines);
+}
+
+/** Share of `a`'s area that `b` covers. */
+function covered(a: Rect, b: Rect): number {
+  const w = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0]));
+  const h = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+  const area = (a[2] - a[0]) * (a[3] - a[1]);
+  return area > 0 ? (w * h) / area : 0;
+}
+
+/**
+ * Designers often draw the same text twice in one place (an outline under a fill, a shadow). Such copies
+ * are one line: replacing it removes them all, and the overlap check counts all their characters.
+ */
+function mergeStacked(lines: EditableLine[]): EditableLine[] {
+  const out: EditableLine[] = [];
+  for (const line of lines) {
+    const twin = out.find((o) => o.text === line.text && covered(o.rect, line.rect) > 0.8 && covered(line.rect, o.rect) > 0.8);
+    if (twin) twin.chars += line.chars;
+    else out.push(line);
+  }
+  return out;
 }
 
 const countChars = (page: mupdf.PDFPage) => {

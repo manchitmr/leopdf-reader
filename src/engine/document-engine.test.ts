@@ -164,3 +164,20 @@ test("page operations and their undo report the new page list; search sees the n
   expect(parts).toHaveLength(2);
   expect(mupdf.Document.openDocument(engine.extractPages("a", [1, 0]), "application/pdf").countPages()).toBe(2);
 });
+
+test("legacy-font text is found by a Unicode search and copies as Unicode", () => {
+  const doc = new mupdf.PDFDocument();
+  const font = doc.addObject(doc.newDictionary());
+  font.put("Type", doc.newName("Font"));
+  font.put("Subtype", doc.newName("Type1"));
+  font.put("BaseFont", doc.newName("FMAbhaya"));
+  const resources = doc.addObject(doc.newDictionary());
+  resources.put("Font", doc.newDictionary());
+  resources.get("Font").put("F1", font);
+  doc.insertPage(-1, doc.addPage([0, 0, 300, 200], 0, resources, "BT /F1 14 Tf 20 100 Td (Y%S ,dxlslhka i|yd) Tj ET"));
+  engine.open("legacy", doc.saveToBuffer("").asUint8Array().slice());
+  const hits = engine.search("legacy", "ලාංකිකයන්");
+  expect(hits).toHaveLength(1);
+  expect(hits[0].rects[0][0]).toBeGreaterThan(20); // after the first word, on the line
+  expect(engine.select("legacy", 0, [0, 80], [300, 110]).text).toBe("ශ්‍රී ලාංකිකයන් සඳහා");
+});
