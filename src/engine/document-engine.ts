@@ -4,6 +4,7 @@ import { FontRegistry, type FaceSource, type FontSource } from "../edit/font-reg
 import { listAnnotations } from "../edit/annotations";
 import { listOutline } from "../edit/bookmarks";
 import { hasForm, listFields } from "../edit/forms";
+import type { Margins } from "../edit/pages";
 import type { Annot, AnnotPatch, EditableLine, EditResult, FormField, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
@@ -189,8 +190,19 @@ export class DocumentEngine {
     return listOutline(this.get(docId).doc);
   }
 
-  undo = (docId: string) => this.edit(docId, (e) => e.undo());
-  redo = (docId: string) => this.edit(docId, (e) => e.redo());
+  // Undo/redo may add or remove pages, so they report the page list too.
+  undo = (docId: string) => this.edit(docId, (e) => e.undo(), true);
+  redo = (docId: string) => this.edit(docId, (e) => e.redo(), true);
+
+  // ---- organize pages ----
+  rotatePages = (docId: string, pages: number[], degrees: number) => this.edit(docId, (e) => e.rotatePages(pages, degrees), true);
+  deletePages = (docId: string, pages: number[]) => this.edit(docId, (e) => e.deletePages(pages), true);
+  movePages = (docId: string, pages: number[], before: number) => this.edit(docId, (e) => e.movePages(pages, before), true);
+  insertBlankPage = (docId: string, at: number) => this.edit(docId, (e) => e.insertBlankPage(at), true);
+  insertPdf = (docId: string, at: number, bytes: Uint8Array) => this.edit(docId, (e) => e.insertPdf(at, bytes), true);
+  cropPages = (docId: string, pages: number[], margins: Margins) => this.edit(docId, (e) => e.cropPages(pages, margins), true);
+  extractPages = (docId: string, pages: number[]) => this.editor(docId).extractPages(pages);
+  splitEvery = (docId: string, size: number) => this.editor(docId).splitEvery(size);
 
   listObjects(docId: string, page: number): PageObject[] {
     return this.editor(docId).listObjects(page);
@@ -234,8 +246,13 @@ export class DocumentEngine {
     return entry.editor;
   }
 
-  private async edit(docId: string, fn: (editor: DocumentEditor) => Promise<EditResult> | EditResult): Promise<EditResult> {
+  private async edit(docId: string, fn: (editor: DocumentEditor) => Promise<EditResult> | EditResult, structural = false): Promise<EditResult> {
     const result = await fn(this.editor(docId));
+    // Pages were added, removed, reordered, turned or cropped: the app needs the new page list.
+    if (structural) {
+      const described = this.describe(docId);
+      if (described.status === "ok") result.info = described.info;
+    }
     // Page content changed: cached text layers and search data are stale.
     const entry = this.get(docId);
     entry.stext.forEach((st) => st.destroy());

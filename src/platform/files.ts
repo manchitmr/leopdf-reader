@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 
 export function ensurePdfName(name: string): string {
   return name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
@@ -12,6 +12,17 @@ export async function writePdf(path: string, bytes: Uint8Array): Promise<void> {
 export async function pickSavePath(suggested: string): Promise<string | null> {
   const path = await save({ defaultPath: ensurePdfName(suggested), filters: [{ name: "PDF", extensions: ["pdf"] }] });
   return path ? ensurePdfName(path) : null;
+}
+
+/** A folder to save several files into (Tauri); null if cancelled. */
+export async function pickFolder(): Promise<string | null> {
+  const picked = await open({ directory: true, multiple: false });
+  return typeof picked === "string" ? picked : null;
+}
+
+export function joinPath(folder: string, name: string): string {
+  const sep = folder.includes("\\") && !folder.includes("/") ? "\\" : "/";
+  return folder.endsWith(sep) ? folder + name : folder + sep + name;
 }
 
 /** Browser/dev fallback: hand the file to the browser as a download. */

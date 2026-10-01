@@ -64,7 +64,7 @@ export interface SelectedAnnot {
 export type DialogState =
   | { kind: "unsaved"; tabIds: string[]; action: "close" | "quit" }
   /** Signed-PDF warning; `then` is what to do after "Continue". */
-  | { kind: "signed"; tabId: string; then: { edit: EditTool } | { tool: Tool } | { bookmark: true } }
+  | { kind: "signed"; tabId: string; then: { edit: EditTool } | { tool: Tool } | { bookmark: true } | { organize: true } }
   | { kind: "author"; then: Tool }
   | { kind: "signature" };
 
@@ -125,6 +125,8 @@ export interface AppState extends Settings {
   /** A full-window busy message, e.g. while preparing to print. */
   busy: StringKey | null;
   editMode: boolean;
+  /** Organize Pages view (thumbnail grid) instead of the page view. */
+  organizing: boolean;
   editTool: EditTool;
   textStyle: TextStyle;
   selected: Selected | null;
@@ -165,9 +167,12 @@ export interface AppState extends Settings {
   dropRecent(path: string): void;
   setBusy(key: StringKey | null): void;
   setEditMode(on: boolean): void;
+  setOrganizing(on: boolean): void;
   setEditTool(tool: EditTool): void;
   setTextStyle(partial: Partial<TextStyle>): void;
   applyHistory(id: string, history: HistoryState): void;
+  /** The document's pages changed (added, removed, reordered, turned, cropped). */
+  applyInfo(id: string, info: DocInfo): void;
   select(selected: Selected | null): void;
   openInlineEditor(state: InlineEditorState): void;
   updateInlineText(text: string): void;
@@ -235,6 +240,7 @@ export function createAppStore(init: Partial<Settings> = {}) {
       searchOpen: false,
       busy: null,
       editMode: false,
+      organizing: false,
       editTool: "select",
       textStyle: { family: "sans", bold: false, size: 12, color: [0, 0, 0] },
       selected: null,
@@ -350,9 +356,20 @@ export function createAppStore(init: Partial<Settings> = {}) {
           selectedAnnot: null,
           focusComment: false,
           ...(tool !== "hand" && s.editMode ? { editMode: false, editTool: "select" as const, selected: null, inlineEditor: null } : {}),
+          ...(tool !== "hand" ? { organizing: false } : {}),
         })),
       setEditMode: (editMode) =>
-        set(editMode ? { editMode, tool: "select", selectedAnnot: null } : { editMode, editTool: "select", selected: null, inlineEditor: null }),
+        set(editMode ? { editMode, organizing: false, tool: "select", selectedAnnot: null } : { editMode, editTool: "select", selected: null, inlineEditor: null }),
+      setOrganizing: (organizing) =>
+        set(organizing ? { organizing, editMode: false, editTool: "select", selected: null, inlineEditor: null, tool: "select", selectedAnnot: null } : { organizing }),
+      applyInfo: (id, info) =>
+        update(id, (t) => ({
+          info,
+          currentPage: Math.min(t.currentPage, info.pageCount - 1),
+          revision: t.revision + 1,
+          search: EMPTY_SEARCH,
+          selection: null,
+        })),
       setMarkupStyle: ({ kind, color }) =>
         set((s) => {
           const k = kind ?? s.markupStyle.kind;

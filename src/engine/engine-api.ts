@@ -1,6 +1,7 @@
 import { transfer } from "comlink";
 import { DocumentEngine } from "./document-engine";
 import type { FaceSource } from "../edit/font-registry";
+import type { Margins } from "../edit/pages";
 import type { AnnotPatch, EditableLine, NewAnnot, TextStyle } from "../edit/types";
 import type { Point, Rect, Rotation } from "./types";
 
@@ -48,6 +49,20 @@ export function createEngineApi(engine = new DocumentEngine()) {
     listObjects: (docId: string, page: number) => engine.listObjects(docId, page),
     listLines: (docId: string, page: number) => engine.listLines(docId, page),
     listImages: (docId: string, page: number) => engine.listImages(docId, page),
+    rotatePages: (docId: string, pages: number[], degrees: number) => engine.rotatePages(docId, pages, degrees),
+    deletePages: (docId: string, pages: number[]) => engine.deletePages(docId, pages),
+    movePages: (docId: string, pages: number[], before: number) => engine.movePages(docId, pages, before),
+    insertBlankPage: (docId: string, at: number) => engine.insertBlankPage(docId, at),
+    insertPdf: (docId: string, at: number, bytes: Uint8Array) => engine.insertPdf(docId, at, bytes),
+    cropPages: (docId: string, pages: number[], margins: Margins) => engine.cropPages(docId, pages, margins),
+    extractPages: (docId: string, pages: number[]) => {
+      const bytes = engine.extractPages(docId, pages);
+      return transfer(bytes, [bytes.buffer as ArrayBuffer]);
+    },
+    splitEvery: (docId: string, size: number) => {
+      const parts = engine.splitEvery(docId, size);
+      return transfer(parts, parts.map((p) => p.buffer as ArrayBuffer));
+    },
     undo: (docId: string) => engine.undo(docId),
     redo: (docId: string) => engine.redo(docId),
     history: (docId: string) => engine.history(docId),

@@ -8,6 +8,7 @@ import {
   updateTextObject, type EditContext,
 } from "./page-objects";
 import * as forms from "./forms";
+import * as pageOps from "./pages";
 import { fitSize, listLines, OverlapError, removeLineText } from "./lines";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
 import * as annots from "./annotations";
@@ -129,6 +130,49 @@ export class DocumentEditor {
       return addImageObject(ctx, image, [rect[0] + dx, rect[1] + dy, rect[2] + dx, rect[3] + dy]);
     });
     return this.result(id);
+  }
+
+  // ---- organize pages (v0.3) ----
+
+  async rotatePages(pages: number[], degrees: number): Promise<EditResult> {
+    this.journaled("Rotate pages", () => pageOps.rotatePages(this.pdf, pages, degrees));
+    return { ...this.result(), pages };
+  }
+
+  async deletePages(pages: number[]): Promise<EditResult> {
+    this.journaled("Delete pages", () => pageOps.deletePages(this.pdf, pages));
+    return this.result();
+  }
+
+  async movePages(pages: number[], before: number): Promise<EditResult> {
+    const moved = this.journaled("Move pages", () => pageOps.movePages(this.pdf, pages, before));
+    return { ...this.result(), pages: moved };
+  }
+
+  async insertBlankPage(at: number): Promise<EditResult> {
+    this.journaled("Insert page", () => pageOps.insertBlankPage(this.pdf, at, Math.max(0, at - 1)));
+    return { ...this.result(), pages: [at] };
+  }
+
+  /** Inserts another PDF's pages at `at` (-1 appends: combining files). */
+  async insertPdf(at: number, bytes: Uint8Array): Promise<EditResult> {
+    const start = at < 0 ? this.pdf.countPages() : at;
+    const n = this.journaled("Insert pages", () => pageOps.insertPdf(this.pdf, at, bytes));
+    return { ...this.result(), pages: Array.from({ length: n }, (_, i) => start + i) };
+  }
+
+  async cropPages(pages: number[], margins: pageOps.Margins): Promise<EditResult> {
+    this.journaled("Crop pages", () => pageOps.cropPages(this.pdf, pages, margins));
+    return { ...this.result(), pages };
+  }
+
+  /** New PDFs made of pages of this one (the document itself is unchanged). */
+  extractPages(pages: number[]): Uint8Array {
+    return pageOps.extractPages(this.pdf, pages);
+  }
+
+  splitEvery(size: number): Uint8Array[] {
+    return pageOps.splitGroups(this.pdf.countPages(), size).map((group) => pageOps.extractPages(this.pdf, group));
   }
 
   listFields(page: number): FormField[] {

@@ -95,6 +95,10 @@ export interface EditResult {
   id?: string;
   /** Characters that no bundled font can show (rendered as boxes). */
   missing?: string[];
+  /** Page indexes to select after a page operation (e.g. where moved or inserted pages now are). */
+  pages?: number[];
+  /** New page list after pages were added, removed, reordered, turned or cropped (also after undo/redo). */
+  info?: import("../engine/types").DocInfo;
   /** The line shares its area with other text (e.g. big background letters); nothing was changed. */
   refused?: "overlap";
   /** The replaced line now runs past its text column (no reflow until E3). */

@@ -10,6 +10,7 @@ import { saveRecent } from "../platform/recent";
 import { isPdfName, isTauri, sourceFromFile, sourceFromPath } from "../platform/sources";
 import { activeTab, appStore, useApp } from "../state/store";
 import { PageView } from "../viewer/PageView";
+import { OrganizeView } from "../viewer/OrganizeView";
 import { copySelection } from "./copy";
 import { DocMessage } from "./DocMessage";
 import { LeftPanel } from "./LeftPanel";
@@ -96,6 +97,7 @@ export function App() {
   usePersistedSettings();
   useQuitGuard();
   const editMode = useApp((s) => s.editMode);
+  const organizing = useApp((s) => s.organizing);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -155,7 +157,7 @@ export function App() {
       }}
     >
       <Toolbar onPrint={onPrint} />
-      {tab?.status === "ready" && (editMode ? <EditBar tab={tab} /> : <ToolOptionsBar />)}
+      {tab?.status === "ready" && !organizing && (editMode ? <EditBar tab={tab} /> : <ToolOptionsBar />)}
       <TabBar />
       <main className="workspace">
         {!tab && <Welcome />}
@@ -165,11 +167,17 @@ export function App() {
         {tab?.status === "ready" && (
           <TabErrorBoundary key={tab.id} fallback={<DocMessage tone="error">{t("errorCorrupt", { name: tab.name })}</DocMessage>}>
             <ToolRail />
-            <LeftPanel tab={tab} />
-            <div className="doc-area">
-              {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
-              <PageView tab={tab} />
-            </div>
+            {organizing ? (
+              <OrganizeView tab={tab} />
+            ) : (
+              <>
+                <LeftPanel tab={tab} />
+                <div className="doc-area">
+                  {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
+                  <PageView tab={tab} />
+                </div>
+              </>
+            )}
             {searchOpen && <SearchBar tab={tab} />}
           </TabErrorBoundary>
         )}
