@@ -97,6 +97,8 @@ export interface EditResult {
   id?: string;
   /** Characters that no bundled font can show (rendered as boxes). */
   missing?: string[];
+  /** Text runs tagged by "Convert to Unicode". */
+  tagged?: number;
   /** Page indexes to select after a page operation (e.g. where moved or inserted pages now are). */
   pages?: number[];
   /** New page list after pages were added, removed, reordered, turned or cropped (also after undo/redo). */

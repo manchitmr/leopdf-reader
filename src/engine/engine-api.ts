@@ -49,6 +49,7 @@ export function createEngineApi(engine = new DocumentEngine()) {
     listObjects: (docId: string, page: number) => engine.listObjects(docId, page),
     listLines: (docId: string, page: number) => engine.listLines(docId, page),
     listImages: (docId: string, page: number) => engine.listImages(docId, page),
+    convertToUnicode: (docId: string) => engine.convertToUnicode(docId),
     rotatePages: (docId: string, pages: number[], degrees: number) => engine.rotatePages(docId, pages, degrees),
     deletePages: (docId: string, pages: number[]) => engine.deletePages(docId, pages),
     movePages: (docId: string, pages: number[], before: number) => engine.movePages(docId, pages, before),
