@@ -4,7 +4,8 @@ import * as mupdf from "mupdf";
 import { beforeEach, expect, test } from "vitest";
 import { DocumentEditor } from "./editor";
 import { FontRegistry } from "./font-registry";
-import { fixVisualOrder, isLegacyFont } from "./lines";
+import { isLegacyFont } from "./legacy";
+import { fixVisualOrder } from "./lines";
 import { nodeFontSource } from "./node-font-source";
 
 mupdf.setLog({ warning: () => {}, error: () => {} });
@@ -88,17 +89,29 @@ test("empty text removes the line; long text reports overflow", async () => {
   expect(r.overflow).toBe(true);
 });
 
-test("lines in legacy fonts are locked", async () => {
+/** A one-line page typed in `fontName` (a stand-in Type1 font; extraction keeps the codes). */
+function legacyPage(fontName: string, text: string): mupdf.PDFDocument {
   const doc = new mupdf.PDFDocument();
   const font = doc.addObject(doc.newDictionary());
   font.put("Type", doc.newName("Font"));
   font.put("Subtype", doc.newName("Type1"));
-  font.put("BaseFont", doc.newName("FMAbhaya"));
+  font.put("BaseFont", doc.newName(fontName));
   const resources = doc.addObject(doc.newDictionary());
   resources.put("Font", doc.newDictionary());
   resources.get("Font").put("F1", font);
-  doc.insertPage(-1, doc.addPage([0, 0, 300, 200], 0, resources, "BT /F1 14 Tf 20 100 Td (Y%S ,dxldj) Tj ET"));
-  expect((await new DocumentEditor(doc, registry).listLines(0))[0]).toMatchObject({ text: "Y%S ,dxldj", locked: "legacy" });
+  doc.insertPage(-1, doc.addPage([0, 0, 300, 200], 0, resources, `BT /F1 14 Tf 20 100 Td (${text}) Tj ET`));
+  return doc;
+}
+
+test("lines in convertible legacy fonts are editable, with their text in Unicode", async () => {
+  const [line] = await new DocumentEditor(legacyPage("FMAbhaya", "Y%S ,dxldj"), registry).listLines(0);
+  expect(line).toMatchObject({ text: "ශ්‍රී ලාංකාව", legacyFont: "FMAbhaya" });
+  expect(line.locked).toBeUndefined();
+});
+
+test("lines in legacy fonts without a conversion table stay locked", async () => {
+  const [line] = await new DocumentEditor(legacyPage("Vanavil-Avvaiyar", "abc"), registry).listLines(0);
+  expect(line).toMatchObject({ locked: "legacy" });
 });
 
 test("lines report the PDF font name and original size", async () => {

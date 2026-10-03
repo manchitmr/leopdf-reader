@@ -60,6 +60,8 @@ export interface EditableLine {
   fontSize: number;
   /** Right edge of the line's text column. */
   maxRight: number;
+  /** The line was typed in this legacy font; `text` is its Unicode conversion (rewritten in a Unicode font). */
+  legacyFont?: string;
   /** Why the line can't be edited yet. */
   locked?: "legacy" | "no-unicode";
 }

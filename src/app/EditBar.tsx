@@ -98,7 +98,13 @@ export function EditBar({ tab }: { tab: DocTab }) {
       </label>
       <div className="spacer" />
       {editor?.line ? (
-        <PdfFontNote fontName={editor.line.fontName} fonts={fonts} fallback={NOTO[editor.line.style.family]} bold={editor.line.style.bold} />
+        editor.line.legacyFont ? (
+          <span className="pdf-font missing" title={t("legacyConverted", { name: editor.line.legacyFont })}>
+            {t("legacyConverted", { name: editor.line.legacyFont })}
+          </span>
+        ) : (
+          <PdfFontNote fontName={editor.line.fontName} fonts={fonts} fallback={NOTO[editor.line.style.family]} bold={editor.line.style.bold} />
+        )
       ) : (
         tool === "text" && <span className="muted">{t("clickToAddText")}</span>
       )}

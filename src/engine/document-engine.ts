@@ -5,6 +5,7 @@ import { listAnnotations } from "../edit/annotations";
 import { listOutline } from "../edit/bookmarks";
 import { hasForm, listFields } from "../edit/forms";
 import type { Margins } from "../edit/pages";
+import { legacyScript, unicodeItems, type SourceChar } from "../edit/legacy";
 import type { Annot, AnnotPatch, EditableLine, EditResult, FormField, ExistingImage, HistoryState, NewAnnot, PageObject, TextStyle } from "../edit/types";
 import { findInPage, preparePage, quadToRect, type PreparedPage, type TextChar } from "./search";
 import type { OpenResult, PageInfo, Point, Quad, Rect, RenderedPage, Rotation, SearchHit, Selection } from "./types";
@@ -49,6 +50,33 @@ function isSigned(doc: mupdf.Document): boolean {
 const noFonts: FontSource = async () => {
   throw new Error("No font source configured");
 };
+
+/**
+ * Copied text for a selection that includes legacy-font text, converted to Unicode; null when it has none
+ * (MuPDF's own copy is then used). A character is selected when its centre lies in a highlight rect.
+ */
+function legacyCopy(st: mupdf.StructuredText, rects: Rect[]): string | null {
+  const inside = (q: Quad) => {
+    const x = (q[0] + q[6]) / 2;
+    const y = (q[1] + q[7]) / 2;
+    return rects.some((r) => x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]);
+  };
+  const lines: SourceChar[][] = [];
+  let line: SourceChar[] = [];
+  let legacy = false;
+  st.walk({
+    onChar: (c, _origin, font, _size, quad) => {
+      if (!inside(quad as Quad)) return;
+      line.push({ c, font: font.getName(), quad: null });
+      legacy ||= legacyScript(font.getName()) !== null;
+    },
+    endLine: () => {
+      if (line.length) lines.push(line);
+      line = [];
+    },
+  });
+  return legacy ? lines.map((l) => unicodeItems(l).map((i) => i.c).join("")).join("\n") : null;
+}
 
 export class DocumentEngine {
   private docs = new Map<string, OpenDoc>();
@@ -128,10 +156,8 @@ export class DocumentEngine {
 
   select(docId: string, pageIndex: number, from: Point, to: Point): Selection {
     const st = this.stext(docId, pageIndex);
-    return {
-      rects: st.highlight(from, to).map((q) => quadToRect(q as Quad)),
-      text: st.copy(from, to),
-    };
+    const rects = st.highlight(from, to).map((q) => quadToRect(q as Quad));
+    return { rects, text: legacyCopy(st, rects) ?? st.copy(from, to) };
   }
 
   close(docId: string): void {
@@ -313,11 +339,16 @@ export class DocumentEngine {
     let prepared = entry.prepared.get(pageIndex);
     if (!prepared) {
       const chars: TextChar[] = [];
+      const line: SourceChar[] = [];
       const page = entry.doc.loadPage(pageIndex);
       const st = page.toStructuredText("preserve-whitespace");
+      // Legacy-font text (FM Abhaya, Bamini …) is searched as the Unicode it stands for.
       st.walk({
-        onChar: (c, _origin, _font, _size, quad) => void chars.push({ c, quad: quad as Quad }),
-        endLine: () => void chars.push({ c: "\n", quad: null }),
+        onChar: (c, _origin, font, _size, quad) => void line.push({ c, font: font.getName(), quad: quad as Quad }),
+        endLine: () => {
+          chars.push(...unicodeItems(line), { c: "\n", quad: null });
+          line.length = 0;
+        },
         endTextBlock: () => void chars.push({ c: "\n", quad: null }),
       });
       st.destroy();
