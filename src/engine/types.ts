@@ -26,6 +26,8 @@ export interface DocInfo {
   editable: boolean;
   /** The PDF allows adding comments and markups. */
   annotatable: boolean;
+  /** Text in old Sinhala/Tamil fonts that hasn't been converted to Unicode yet. */
+  legacyText?: boolean;
   /** The PDF has form fields and allows filling them. */
   fillable: boolean;
   /** The PDF contains digital signatures (editing invalidates them). */
