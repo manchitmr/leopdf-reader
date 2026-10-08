@@ -9,6 +9,7 @@ import {
 } from "./page-objects";
 import * as forms from "./forms";
 import * as pageOps from "./pages";
+import { convertDocument } from "./unicode-layer";
 import { fitSize, listLines, OverlapError, removeLineText } from "./lines";
 import { loadStyleFonts, shapeText, type ShapedLine } from "./shaper";
 import * as annots from "./annotations";
@@ -130,6 +131,12 @@ export class DocumentEditor {
       return addImageObject(ctx, image, [rect[0] + dx, rect[1] + dy, rect[2] + dx, rect[3] + dy]);
     });
     return this.result(id);
+  }
+
+  /** Tags legacy-font text with its Unicode so other apps can search and copy it (looks unchanged). */
+  async convertToUnicode(): Promise<EditResult> {
+    const tagged = this.journaled("Convert to Unicode", () => convertDocument(this.pdf));
+    return { ...this.result(), tagged };
   }
 
   // ---- organize pages (v0.3) ----

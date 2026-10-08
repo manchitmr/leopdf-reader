@@ -70,6 +70,12 @@ async function pickImageOrNotify(deps: EditDeps): Promise<Uint8Array | null> {
   }
 }
 
+/** Tags old-font Sinhala/Tamil text with its Unicode so other apps can search and copy it. */
+export async function convertToUnicode(tabId: string, deps: EditDeps = defaultEditDeps()): Promise<void> {
+  const result = await runEdit(tabId, () => deps.engine.convertToUnicode(tabId), deps);
+  if (result) deps.store.getState().showNotice("convertedUnicode", { count: result.tagged ?? 0 });
+}
+
 export async function addImageFromPicker(tabId: string, page: number, deps: EditDeps = defaultEditDeps()): Promise<void> {
   const bytes = await pickImageOrNotify(deps);
   if (bytes) await runEdit(tabId, () => deps.engine.addImage(tabId, page, bytes, null), deps);

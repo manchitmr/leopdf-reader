@@ -43,12 +43,12 @@ function table(letters: Record<string, string>, rules: Record<string, string> | 
 
 const TABLES: Record<LegacyScript, Table> = {
   sinhala: table(fm.letters, fm.rules),
-  // Kalaham and similar fonts draw ர before ி/ீ with the ா stroke ("hp"), which never occurs otherwise.
-  tamil: table(bamini.letters, { hp: "up", hP: "uP" }),
+  // Kalaham and similar fonts draw ர with the ா stroke before ி/ீ/் ("hp", "h;"), which never occur otherwise.
+  tamil: table(bamini.letters, { hp: "up", hP: "uP", "h;": "u;" }),
 };
 
 /** Splits legacy text into tokens, each with its Unicode and the source range it came from. */
-function tokens(text: string, script: LegacyScript): { unicode: string; start: number; end: number }[] {
+export function tokens(text: string, script: LegacyScript): { unicode: string; start: number; end: number }[] {
   const t = TABLES[script];
   const src = t.rules ? text.replace(t.rules[0], (m) => t.rules![1][m]) : text;
   const out: { unicode: string; start: number; end: number }[] = [];
@@ -85,7 +85,8 @@ export function unicodeItems(chars: SourceChar[]): { c: string; quad: Quad | nul
     let j = i + 1;
     while (j < chars.length && legacyScript(chars[j].font) === script) j++;
     const run = chars.slice(i, j);
-    if (!script) out.push(...run.map(({ c, quad }) => ({ c, quad })));
+    // Text already converted (ActualText from "Convert to Unicode") reads as Sinhala/Tamil: leave it.
+    if (!script || run.some((ch) => /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(ch.c))) out.push(...run.map(({ c, quad }) => ({ c, quad })));
     else {
       for (const t of tokens(run.map((ch) => ch.c).join(""), script)) {
         const quads = run.slice(t.start, t.end).map((ch) => ch.quad).filter((q): q is Quad => q !== null);

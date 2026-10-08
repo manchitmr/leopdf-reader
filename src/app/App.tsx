@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { quitHandler, requestQuit } from "./edit-actions";
+import { convertToUnicode, quitHandler, requestQuit } from "./edit-actions";
 import { EditBar } from "./EditBar";
 import { onEngineCrash } from "../engine/client";
 import { useT } from "../i18n/useT";
@@ -94,6 +94,8 @@ export function App() {
   const busy = useApp((s) => s.busy);
   const searchOpen = useApp((s) => s.searchOpen);
   const [engineNotice, setEngineNotice] = useState(false);
+  /** Tabs whose "old fonts" banner was closed this session. */
+  const [legacyDismissed, setLegacyDismissed] = useState<Set<string>>(new Set());
   usePersistedSettings();
   useQuitGuard();
   const editMode = useApp((s) => s.editMode);
@@ -174,6 +176,17 @@ export function App() {
                 <LeftPanel tab={tab} />
                 <div className="doc-area">
                   {tab.info?.repaired && <div className="banner">{t("repairedBanner")}</div>}
+                  {tab.info?.legacyText && tab.info.editable && !tab.info.signed && !legacyDismissed.has(tab.id) && (
+                    <div className="banner legacy-banner">
+                      <span>{t("legacyBanner")}</span>
+                      <button className="primary-button" onClick={() => void convertToUnicode(tab.id)}>
+                        {t("convertToUnicode")}
+                      </button>
+                      <button className="icon-button" aria-label={t("dismiss")} title={t("dismiss")} onClick={() => setLegacyDismissed(new Set(legacyDismissed).add(tab.id))}>
+                        ×
+                      </button>
+                    </div>
+                  )}
                   <PageView tab={tab} />
                 </div>
               </>

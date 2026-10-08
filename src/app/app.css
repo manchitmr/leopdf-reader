@@ -261,3 +261,6 @@ button, input, select { font: inherit; color: inherit; }
 .field-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0; }
 .field-row input { width: 80px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; background: var(--panel); color: inherit; }
 .crop-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; margin-bottom: 12px; }
+.legacy-banner { display: flex; align-items: center; gap: 10px; }
+.legacy-banner span { flex: 1; }
+.legacy-banner .primary-button { padding: 3px 10px; font-size: 12px; }
